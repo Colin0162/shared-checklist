@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import Item from './Item'
+import Memo from './Memo'
 
 const isDone = (it, mode) => (mode === 'check' ? it.status === 'done' : Boolean(it.status))
 
-// 항목을 group_name으로 묶되, board.categories 순서를 우선 적용. 나머지는 뒤에.
 function groupItems(items, categoryOrder) {
   const map = new Map()
   for (const it of items) {
@@ -25,9 +25,21 @@ function groupItems(items, categoryOrder) {
   return ordered
 }
 
-// 한 게시글의 체크리스트 화면.
-// props: board, items, isAdmin, onBack, onEdit, onReset, onSetStatus, onSetNote
-function Checklist({ board, items, isAdmin, onBack, onEdit, onReset, onSetStatus, onSetNote }) {
+// props: board, items, adminMode, onBack, onEnterAdmin, onExitAdmin,
+//        onEdit, onReset, onSetStatus, onSetNote, onSetMemo
+function Checklist({
+  board,
+  items,
+  adminMode,
+  onBack,
+  onEnterAdmin,
+  onExitAdmin,
+  onEdit,
+  onReset,
+  onSetStatus,
+  onSetNote,
+  onSetMemo,
+}) {
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
   const mode = board.mode
 
@@ -44,13 +56,22 @@ function Checklist({ board, items, isAdmin, onBack, onEdit, onReset, onSetStatus
       <div className="checklist-head">
         <button className="back-btn" onClick={onBack}>← 목록</button>
         <h2 className="board-heading">{board.title}</h2>
-        {isAdmin && (
-          <div className="head-actions">
-            <button className="btn" onClick={onEdit}>편집</button>
-            <button className="btn" onClick={onReset}>초기화</button>
-          </div>
-        )}
+        <div className="head-actions">
+          {adminMode ? (
+            <>
+              <button className="btn" onClick={onEdit}>편집</button>
+              <button className="btn" onClick={onReset}>초기화</button>
+              <button className="btn btn-small" onClick={onExitAdmin}>관리자 해제</button>
+            </>
+          ) : (
+            <button className="btn" onClick={onEnterAdmin}>관리자 모드</button>
+          )}
+        </div>
       </div>
+
+      {board.created_by && <p className="board-author">작성자: {board.created_by}</p>}
+
+      <Memo value={board.memo} onSave={onSetMemo} />
 
       <div className="progress">
         <span className="progress-text">
@@ -78,14 +99,10 @@ function Checklist({ board, items, isAdmin, onBack, onEdit, onReset, onSetStatus
         return (
           <div className="group" key={group.name || '_'}>
             <div className="group-head">
-              {group.name ? (
-                <h3 className="group-title">{group.name}</h3>
-              ) : (
-                <h3 className="group-title group-title-muted">(대항목 없음)</h3>
-              )}
-              <span className="group-progress">
-                {gDone}/{gTotal}
-              </span>
+              <h3 className={'group-title' + (group.name ? '' : ' group-title-muted')}>
+                {group.name || '(대항목 없음)'}
+              </h3>
+              <span className="group-progress">{gDone}/{gTotal}</span>
             </div>
             <ul className="item-list">
               {shown.map((item) => (

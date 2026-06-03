@@ -1,17 +1,22 @@
 import { useState } from 'react'
-import { saveBoard, deleteBoard } from '../lib/api'
+import { createBoard, updateBoard, deleteBoard } from '../lib/api'
 import ConfirmModal from './ConfirmModal'
 
 let seq = 0
 const newKey = () => 'k-' + ++seq
 
 // 관리자 게시글 빌더 (생성/편집).
-// props: token, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
-function AdminEditor({ token, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
+// props: author, adminPw, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
+function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
   const isNew = !board
 
   const [title, setTitle] = useState(board?.title ?? '')
   const [mode, setMode] = useState(board?.mode ?? 'check')
+
+  // 새 게시글일 때만: 편집 비밀번호 + 입장 설정
+  const [newAdminPw, setNewAdminPw] = useState('')
+  const [entryMode, setEntryMode] = useState('public') // 'public' | 'password'
+  const [newEntryPw, setNewEntryPw] = useState('')
 
   // 대항목(카테고리): [{ key, name }]
   const [categories, setCategories] = useState(() =>
@@ -83,6 +88,10 @@ function AdminEditor({ token, board, originalItems, nextSortOrder, onSaved, onCa
       setErr('제목을 입력하세요.')
       return
     }
+    if (isNew && !newAdminPw.trim()) {
+      setErr('편집 비밀번호를 설정하세요.')
+      return
+    }
     setSaving(true)
     setErr('')
     try {
@@ -100,14 +109,17 @@ function AdminEditor({ token, board, originalItems, nextSortOrder, onSaved, onCa
           sort_order: i,
         }))
       const boardPayload = {
-        ...(isNew ? {} : { id: board.id }),
         title: title.trim(),
         mode,
         categories: categoryList,
         sort_order: isNew ? nextSortOrder : board.sort_order ?? 0,
       }
-      // 한 번의 RPC로 보드+항목 저장 (서버에서 관리자 검증 + 항목 diff로 체크상태 보존)
-      await saveBoard(token, boardPayload, itemsPayload)
+      if (isNew) {
+        const entryPw = entryMode === 'password' ? newEntryPw.trim() : ''
+        await createBoard(author, boardPayload, itemsPayload, newAdminPw.trim(), entryPw)
+      } else {
+        await updateBoard(board.id, adminPw, boardPayload, itemsPayload)
+      }
       onSaved()
     } catch (e) {
       setErr(e.message)
@@ -117,7 +129,7 @@ function AdminEditor({ token, board, originalItems, nextSortOrder, onSaved, onCa
 
   async function handleDelete() {
     try {
-      await deleteBoard(token, board.id)
+      await deleteBoard(board.id, adminPw)
       onDeleted()
     } catch (e) {
       setErr(e.message)
@@ -158,6 +170,54 @@ function AdminEditor({ token, board, originalItems, nextSortOrder, onSaved, onCa
           </label>
         </div>
       </div>
+
+      {isNew && (
+        <>
+          <label className="field">
+            <span className="field-label">편집 비밀번호 (이 게시글을 수정할 때 필요)</span>
+            <input
+              className="text-input"
+              type="password"
+              value={newAdminPw}
+              onChange={(e) => setNewAdminPw(e.target.value)}
+              placeholder="편집 비밀번호"
+            />
+          </label>
+          <div className="field">
+            <span className="field-label">입장 설정</span>
+            <div className="radio-row">
+              <label>
+                <input
+                  type="radio"
+                  name="entry"
+                  checked={entryMode === 'public'}
+                  onChange={() => setEntryMode('public')}
+                />
+                전체 공개
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="entry"
+                  checked={entryMode === 'password'}
+                  onChange={() => setEntryMode('password')}
+                />
+                비밀번호 입장
+              </label>
+            </div>
+            {entryMode === 'password' && (
+              <input
+                className="text-input"
+                type="password"
+                style={{ marginTop: 8 }}
+                value={newEntryPw}
+                onChange={(e) => setNewEntryPw(e.target.value)}
+                placeholder="입장 비밀번호"
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {/* 대항목(카테고리) */}
       <div className="field">

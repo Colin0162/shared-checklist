@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import { supabase } from './lib/supabase'
-import { getBoards, getBoardItems, setItemStatus, setItemNote, resetBoard } from './lib/api'
+import {
+  getBoards,
+  getBoardItems,
+  setItemStatus,
+  setItemNote,
+  setMemo,
+  resetBoard,
+  verifyBoardAdmin,
+  verifyBoardEntry,
+} from './lib/api'
 import BoardList from './components/BoardList'
 import Checklist from './components/Checklist'
 import AdminEditor from './components/AdminEditor'
 import ConfirmModal from './components/ConfirmModal'
 import Login from './components/Login'
-import UserAdmin from './components/UserAdmin'
+import PasswordPrompt from './components/PasswordPrompt'
 
-// 실시간 변경(payload)을 현재 items 목록에 반영
 function applyItemChange(prev, payload) {
   if (payload.eventType === 'INSERT') {
     if (prev.some((it) => it.id === payload.new.id)) return prev
@@ -27,7 +35,7 @@ function applyItemChange(prev, payload) {
 function loadUser() {
   try {
     const u = JSON.parse(localStorage.getItem('user'))
-    return u && u.token ? u : null // 토큰 없으면(구버전 세션) 재로그인 필요
+    return u && u.name ? u : null
   } catch {
     return null
   }
@@ -38,15 +46,16 @@ function App() {
   const [boards, setBoards] = useState([])
   const [openBoard, setOpenBoard] = useState(null)
   const [items, setItems] = useState([])
+  const [adminPw, setAdminPw] = useState(null) // 관리자 모드면 편집 비번 보관
   const [editing, setEditing] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
+  const [entryPrompt, setEntryPrompt] = useState(null) // 입장 비번 받을 board
+  const [adminPrompt, setAdminPrompt] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
-  const [showUsers, setShowUsers] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
   const configError = supabase ? '' : 'Supabase 연결 정보가 없습니다 (.env.local 확인).'
-  const isAdmin = Boolean(user?.is_admin)
 
   useEffect(() => {
     if (!supabase) return
@@ -56,13 +65,18 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
-  // 실시간: 게시글 목록 변경 구독
+  // 실시간: 게시글 목록/메모 변경
   useEffect(() => {
     if (!supabase) return
     const ch = supabase
       .channel('boards-all')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, () => {
-        getBoards().then(setBoards).catch(() => {})
+        getBoards()
+          .then((bs) => {
+            setBoards(bs)
+            setOpenBoard((ob) => (ob ? bs.find((b) => b.id === ob.id) || ob : ob))
+          })
+          .catch(() => {})
       })
       .subscribe()
     return () => {
@@ -70,7 +84,7 @@ function App() {
     }
   }, [])
 
-  // 실시간: 열려있는 게시글의 항목 변경 구독
+  // 실시간: 열린 게시글의 항목 변경
   useEffect(() => {
     if (!supabase || !openBoard) return
     const ch = supabase
@@ -87,15 +101,16 @@ function App() {
   }, [openBoard])
 
   function handleLogin(u) {
-    localStorage.setItem('user', JSON.stringify(u))
-    setUser(u)
+    const value = { name: u.name }
+    localStorage.setItem('user', JSON.stringify(value))
+    setUser(value)
   }
   function logout() {
     localStorage.removeItem('user')
     setUser(null)
     setOpenBoard(null)
     setEditing(false)
-    setShowUsers(false)
+    setAdminPw(null)
   }
 
   async function reloadBoards() {
@@ -105,40 +120,64 @@ function App() {
       setError(e.message)
     }
   }
-  async function reloadItems(board) {
-    try {
-      setItems(await getBoardItems(board.id))
-    } catch (e) {
-      setError(e.message)
-    }
-  }
 
-  async function openBoardById(board) {
+  // 게시글 열기 (입장 비번 있으면 먼저 확인)
+  function tryOpen(board) {
+    if (board.has_entry_password) setEntryPrompt(board)
+    else openConfirmed(board)
+  }
+  async function openConfirmed(board) {
     setLoading(true)
     setError('')
     try {
       setItems(await getBoardItems(board.id))
       setOpenBoard(board)
+      setAdminPw(null)
     } catch (e) {
       setError(e.message)
     } finally {
       setLoading(false)
     }
   }
+  async function submitEntry(pw) {
+    try {
+      const res = await verifyBoardEntry(entryPrompt.id, pw)
+      if (!res.ok) return res.error || '실패'
+      const b = entryPrompt
+      setEntryPrompt(null)
+      await openConfirmed(b)
+      return null
+    } catch (e) {
+      return e.message
+    }
+  }
 
   function goBack() {
     setOpenBoard(null)
     setItems([])
+    setAdminPw(null)
   }
 
-  // 체크: 화면 먼저 갱신 후 DB 저장 (누가 체크했는지 이름 기록)
+  // 관리자 모드 진입
+  async function submitAdmin(pw) {
+    try {
+      const res = await verifyBoardAdmin(openBoard.id, pw)
+      if (!res.ok) return res.error || '실패'
+      setAdminPw(pw)
+      setAdminPrompt(false)
+      return null
+    } catch (e) {
+      return e.message
+    }
+  }
+
   async function handleSetStatus(id, status) {
     const checkedBy = status ? user?.name || '' : ''
     setItems((prev) =>
       prev.map((it) => (it.id === id ? { ...it, status, checked_by: checkedBy } : it)),
     )
     try {
-      await setItemStatus(user.token, id, status)
+      await setItemStatus(id, status, checkedBy)
     } catch (e) {
       setError(e.message)
     }
@@ -146,7 +185,15 @@ function App() {
   async function handleSetNote(id, note) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note } : it)))
     try {
-      await setItemNote(user.token, id, note)
+      await setItemNote(id, note)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function handleSetMemo(memo) {
+    setOpenBoard((ob) => (ob ? { ...ob, memo } : ob))
+    try {
+      await setMemo(openBoard.id, memo)
     } catch (e) {
       setError(e.message)
     }
@@ -168,7 +215,7 @@ function App() {
       if (openBoard) {
         const updated = fresh.find((b) => b.id === openBoard.id) || null
         setOpenBoard(updated)
-        if (updated) await reloadItems(updated)
+        if (updated) setItems(await getBoardItems(updated.id))
       }
     } catch (e) {
       setError(e.message)
@@ -178,13 +225,13 @@ function App() {
     setEditing(false)
     setOpenBoard(null)
     setItems([])
+    setAdminPw(null)
     await reloadBoards()
   }
-
   async function doReset() {
     try {
-      await resetBoard(user.token, openBoard.id)
-      await reloadItems(openBoard)
+      await resetBoard(openBoard.id, adminPw)
+      setItems(await getBoardItems(openBoard.id))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -194,7 +241,6 @@ function App() {
 
   const nextSortOrder = boards.reduce((max, b) => Math.max(max, b.sort_order ?? 0), 0) + 1
 
-  // 로그인 전: 로그인 화면만
   if (supabase && !user) {
     return (
       <div className="app">
@@ -212,22 +258,19 @@ function App() {
         <h1>체크리스트</h1>
         {user && (
           <div className="user-bar">
-            <span className="user-name">
-              {user.name}님{isAdmin ? ' (관리자)' : ''}
-            </span>
+            <span className="user-name">{user.name}님</span>
             <button className="btn btn-small" onClick={logout}>로그아웃</button>
           </div>
         )}
       </header>
 
-      {(configError || error) && (
-        <p className="error">오류: {configError || error}</p>
-      )}
+      {(configError || error) && <p className="error">오류: {configError || error}</p>}
       {loading && <p className="muted">불러오는 중…</p>}
 
       {!loading && editing && (
         <AdminEditor
-          token={user.token}
+          author={user.name}
+          adminPw={adminPw}
           board={editTarget}
           originalItems={editTarget ? items : []}
           nextSortOrder={nextSortOrder}
@@ -237,39 +280,45 @@ function App() {
         />
       )}
 
-      {!loading && !editing && showUsers && (
-        <UserAdmin
-          token={user.token}
-          currentName={user.name}
-          onBack={() => setShowUsers(false)}
-        />
-      )}
-
-      {!loading && !editing && !showUsers && openBoard && (
+      {!loading && !editing && openBoard && (
         <Checklist
           board={openBoard}
           items={items}
-          isAdmin={isAdmin}
+          adminMode={Boolean(adminPw)}
           onBack={goBack}
+          onEnterAdmin={() => setAdminPrompt(true)}
+          onExitAdmin={() => setAdminPw(null)}
           onEdit={openEdit}
           onReset={() => setConfirmReset(true)}
           onSetStatus={handleSetStatus}
           onSetNote={handleSetNote}
+          onSetMemo={handleSetMemo}
         />
       )}
 
-      {!loading && !editing && !showUsers && !openBoard && (
+      {!loading && !editing && !openBoard && (
         <>
-          {isAdmin && (
-            <div className="list-head">
-              <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
-              <button className="btn" onClick={() => setShowUsers(true)}>사용자 관리</button>
-            </div>
-          )}
-          <BoardList boards={boards} onOpen={openBoardById} />
+          <div className="list-head">
+            <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+          </div>
+          <BoardList boards={boards} onOpen={tryOpen} />
         </>
       )}
 
+      {entryPrompt && (
+        <PasswordPrompt
+          title={`'${entryPrompt.title}' 입장 비밀번호`}
+          onSubmit={submitEntry}
+          onCancel={() => setEntryPrompt(null)}
+        />
+      )}
+      {adminPrompt && openBoard && (
+        <PasswordPrompt
+          title={`'${openBoard.title}' 편집 비밀번호`}
+          onSubmit={submitAdmin}
+          onCancel={() => setAdminPrompt(false)}
+        />
+      )}
       {confirmReset && openBoard && (
         <ConfirmModal
           message={`'${openBoard.title}'의 체크를 모두 초기화할까요?`}

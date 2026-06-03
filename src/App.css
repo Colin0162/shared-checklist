@@ -171,6 +171,45 @@
   color: var(--muted);
   margin-top: 4px;
 }
+.lock {
+  font-size: 13px;
+}
+
+/* ── 작성자 / 메모 ── */
+.board-author {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.memo {
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  padding: 8px 12px;
+}
+.memo-summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.memo-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+.memo-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
 
 /* ── 체크리스트 헤더 ── */
 .checklist-head {
