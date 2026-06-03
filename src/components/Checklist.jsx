@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Item from './Item'
-import Memo from './Memo'
 
 const isDone = (it, mode) => (mode === 'check' ? it.status === 'done' : Boolean(it.status))
 
@@ -26,7 +25,7 @@ function groupItems(items, categoryOrder) {
 }
 
 // props: board, items, adminMode, onBack, onEnterAdmin, onExitAdmin,
-//        onEdit, onReset, onSetStatus, onSetNote, onSetMemo
+//        onEdit, onReset, onSetStatus, onSetNote
 function Checklist({
   board,
   items,
@@ -38,10 +37,10 @@ function Checklist({
   onReset,
   onSetStatus,
   onSetNote,
-  onSetMemo,
 }) {
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
   const mode = board.mode
+  const isTodo = mode === 'todo'
 
   const total = items.length
   const doneCount = items.filter((it) => isDone(it, mode)).length
@@ -71,25 +70,27 @@ function Checklist({
 
       {board.created_by && <p className="board-author">작성자: {board.created_by}</p>}
 
-      <Memo value={board.memo} onSave={onSetMemo} />
+      {!isTodo && (
+        <>
+          <div className="progress">
+            <span className="progress-text">
+              {doneLabel} {doneCount} / {total} ({percent}%)
+            </span>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${percent}%` }} />
+            </div>
+          </div>
 
-      <div className="progress">
-        <span className="progress-text">
-          {doneLabel} {doneCount} / {total} ({percent}%)
-        </span>
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${percent}%` }} />
-        </div>
-      </div>
-
-      <div className="toolbar">
-        <button
-          className={'btn' + (unfinishedOnly ? ' btn-primary' : '')}
-          onClick={() => setUnfinishedOnly((v) => !v)}
-        >
-          {unfinishedOnly ? '전체 보기' : '미완료만 보기'}
-        </button>
-      </div>
+          <div className="toolbar">
+            <button
+              className={'btn' + (unfinishedOnly ? ' btn-primary' : '')}
+              onClick={() => setUnfinishedOnly((v) => !v)}
+            >
+              {unfinishedOnly ? '전체 보기' : '미완료만 보기'}
+            </button>
+          </div>
+        </>
+      )}
 
       {groups.map((group) => {
         const gTotal = group.items.length
@@ -98,12 +99,12 @@ function Checklist({
         if (unfinishedOnly && shown.length === 0) return null
         return (
           <div className="group" key={group.name || '_'}>
-            <div className="group-head">
-              <h3 className={'group-title' + (group.name ? '' : ' group-title-muted')}>
-                {group.name || '(대항목 없음)'}
-              </h3>
-              <span className="group-progress">{gDone}/{gTotal}</span>
-            </div>
+            {group.name && (
+              <div className="group-head">
+                <h3 className="group-title">{group.name}</h3>
+                {!isTodo && <span className="group-progress">{gDone}/{gTotal}</span>}
+              </div>
+            )}
             <ul className="item-list">
               {shown.map((item) => (
                 <Item

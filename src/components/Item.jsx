@@ -1,6 +1,21 @@
 import { useState } from 'react'
 import { RATINGS } from '../lib/constants'
 
+// 텍스트 안의 URL을 클릭 가능한 링크로
+function withLinks(text) {
+  return String(text)
+    .split(/(https?:\/\/[^\s]+)/g)
+    .map((p, i) =>
+      /^https?:\/\//.test(p) ? (
+        <a key={i} href={p} target="_blank" rel="noreferrer" className="todo-link">
+          {p}
+        </a>
+      ) : (
+        p
+      ),
+    )
+}
+
 // 항목 한 줄.
 //   위: 라벨(+수량 있으면 표시) / 체크박스 or 상중하
 //   아래: 비고 입력 — item.show_note 가 켜진 항목에만
@@ -16,6 +31,11 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
   if (!focused && item.note !== syncedNote) {
     setSyncedNote(item.note ?? '')
     setNoteDraft(item.note ?? '')
+  }
+
+  // 할 일 리스트: 체크박스/컨트롤 없이 텍스트만(링크 클릭 가능)
+  if (mode === 'todo') {
+    return <li className="todo-line">{withLinks(item.label)}</li>
   }
 
   return (

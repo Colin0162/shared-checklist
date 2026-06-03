@@ -6,7 +6,6 @@ import {
   getBoardItems,
   setItemStatus,
   setItemNote,
-  setMemo,
   resetBoard,
   verifyBoardAdmin,
   verifyBoardEntry,
@@ -190,15 +189,6 @@ function App() {
       setError(e.message)
     }
   }
-  async function handleSetMemo(memo) {
-    setOpenBoard((ob) => (ob ? { ...ob, memo } : ob))
-    try {
-      await setMemo(openBoard.id, memo)
-    } catch (e) {
-      setError(e.message)
-    }
-  }
-
   function openNew() {
     setEditTarget(null)
     setEditing(true)
@@ -292,7 +282,6 @@ function App() {
           onReset={() => setConfirmReset(true)}
           onSetStatus={handleSetStatus}
           onSetNote={handleSetNote}
-          onSetMemo={handleSetMemo}
         />
       )}
 
@@ -314,7 +303,7 @@ function App() {
       )}
       {adminPrompt && openBoard && (
         <PasswordPrompt
-          title={`'${openBoard.title}' 편집 비밀번호`}
+          title={`'${openBoard.title}' 관리자 비밀번호`}
           onSubmit={submitAdmin}
           onCancel={() => setAdminPrompt(false)}
         />

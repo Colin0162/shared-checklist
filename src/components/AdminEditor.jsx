@@ -153,7 +153,7 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
           className="text-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="예: 6월 29일 교리 준비물"
+          placeholder="제목"
         />
       </label>
 
@@ -168,13 +168,17 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
             <input type="radio" name="mode" checked={mode === 'rate'} onChange={() => setMode('rate')} />
             상·중·하 평가
           </label>
+          <label>
+            <input type="radio" name="mode" checked={mode === 'todo'} onChange={() => setMode('todo')} />
+            할 일 리스트
+          </label>
         </div>
       </div>
 
       {isNew && (
         <>
           <label className="field">
-            <span className="field-label">편집 비밀번호 (이 게시글을 수정할 때 필요)</span>
+            <span className="field-label">관리자 비밀번호 (게시글을 수정할 때 필요)</span>
             <input
               className="text-input"
               type="password"
@@ -229,7 +233,7 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
                 className="text-input"
                 value={c.name}
                 onChange={(e) => renameCategory(c.key, e.target.value)}
-                placeholder="예: 전체 필수품목"
+                placeholder="대항목 이름"
               />
               <button className="icon-btn" onClick={() => removeCategory(c.key)} title="삭제">✕</button>
             </li>
@@ -261,7 +265,7 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
                 className="text-input row-label"
                 value={row.label}
                 onChange={(e) => updateRow(row.key, 'label', e.target.value)}
-                placeholder="항목명"
+                placeholder={mode === 'todo' ? '내용 (링크 붙여넣기 가능)' : '항목명'}
               />
               {mode === 'check' && (
                 <input
@@ -271,20 +275,24 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
                   placeholder="수량(선택)"
                 />
               )}
-              <input
-                className="text-input row-assignee"
-                value={row.assignee}
-                onChange={(e) => updateRow(row.key, 'assignee', e.target.value)}
-                placeholder="담당자(선택)"
-              />
-              <label className="row-note" title="비고칸 사용">
+              {mode !== 'todo' && (
                 <input
-                  type="checkbox"
-                  checked={row.show_note}
-                  onChange={(e) => updateRow(row.key, 'show_note', e.target.checked)}
+                  className="text-input row-assignee"
+                  value={row.assignee}
+                  onChange={(e) => updateRow(row.key, 'assignee', e.target.value)}
+                  placeholder="담당자(선택)"
                 />
-                비고
-              </label>
+              )}
+              {mode !== 'todo' && (
+                <label className="row-note" title="비고칸 사용">
+                  <input
+                    type="checkbox"
+                    checked={row.show_note}
+                    onChange={(e) => updateRow(row.key, 'show_note', e.target.checked)}
+                  />
+                  비고
+                </label>
+              )}
               <div className="row-actions">
                 <button className="icon-btn" onClick={() => move(row.key, -1)} title="위로">↑</button>
                 <button className="icon-btn" onClick={() => move(row.key, 1)} title="아래로">↓</button>

@@ -43,8 +43,7 @@ function Login({ onLogin }) {
       <input
         className="text-input"
         type="password"
-        inputMode="numeric"
-        placeholder="PIN (숫자)"
+        placeholder="비밀번호"
         value={pin}
         onChange={(e) => setPin(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit('login')}

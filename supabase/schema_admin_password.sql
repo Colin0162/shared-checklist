@@ -15,6 +15,10 @@ alter table public.boards add column if not exists memo               text    no
 -- 항목 담당자(#4)
 alter table public.items  add column if not exists assignee text not null default '';
 
+-- 형식에 '할 일 리스트'(todo) 추가 허용
+alter table public.boards drop constraint if exists boards_mode_check;
+alter table public.boards add  constraint boards_mode_check check (mode in ('check','rate','todo'));
+
 -- 비밀번호 해시 보관 (anon 직접 접근 불가)
 create table if not exists public.board_secrets (
   board_id   uuid primary key references public.boards(id) on delete cascade,
@@ -81,7 +85,7 @@ create or replace function public.create_board(
 returns uuid language plpgsql security definer set search_path = public, extensions as $$
 declare v_id uuid;
 begin
-  if btrim(coalesce(p_admin_pw,'')) = '' then raise exception '편집 비밀번호를 설정하세요.'; end if;
+  if btrim(coalesce(p_admin_pw,'')) = '' then raise exception '관리자 비밀번호를 설정하세요.'; end if;
   insert into public.boards (title, mode, categories, created_by, has_entry_password, sort_order)
   values (coalesce(p_board->>'title',''), coalesce(p_board->>'mode','check'),
           coalesce(p_board->'categories','[]'::jsonb), coalesce(p_author,''),
@@ -101,7 +105,7 @@ create or replace function public.update_board(
 returns void language plpgsql security definer set search_path = public, extensions as $$
 declare v_keep uuid[]; r record;
 begin
-  if not _check_admin(p_board_id, p_pw) then raise exception '편집 비밀번호가 올바르지 않습니다.'; end if;
+  if not _check_admin(p_board_id, p_pw) then raise exception '관리자 비밀번호가 올바르지 않습니다.'; end if;
   update public.boards set
     title = coalesce(p_board->>'title', title),
     mode = coalesce(p_board->>'mode', mode),
@@ -132,14 +136,14 @@ end; $$;
 create or replace function public.delete_board(p_board_id uuid, p_pw text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
-  if not _check_admin(p_board_id, p_pw) then raise exception '편집 비밀번호가 올바르지 않습니다.'; end if;
+  if not _check_admin(p_board_id, p_pw) then raise exception '관리자 비밀번호가 올바르지 않습니다.'; end if;
   delete from public.boards where id = p_board_id;  -- items/secrets cascade
 end; $$;
 
 create or replace function public.reset_board(p_board_id uuid, p_pw text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
-  if not _check_admin(p_board_id, p_pw) then raise exception '편집 비밀번호가 올바르지 않습니다.'; end if;
+  if not _check_admin(p_board_id, p_pw) then raise exception '관리자 비밀번호가 올바르지 않습니다.'; end if;
   update public.items set status = '', checked_by = '', updated_at = now() where board_id = p_board_id;
 end; $$;
 

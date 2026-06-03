@@ -297,6 +297,22 @@
   gap: 8px;
 }
 
+/* 할 일 리스트(보기 전용 텍스트 줄) */
+.todo-line {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.todo-link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 /* ── 항목 ── */
 .item {
   background: var(--card);
