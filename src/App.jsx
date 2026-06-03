@@ -16,7 +16,7 @@ function App() {
           <img src={viteLogo} className="vite" alt="Vite logo" />
         </div>
         <div>
-          <h1>봄소풍 체크리스트</h1>
+          <h1>체크리스트</h1>
           <p>
             <code>src/App.jsx</code>를 수정하고 저장하면 화면이 바로 바뀝니다 (<code>HMR</code>)
           </p>
