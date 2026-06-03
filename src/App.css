@@ -51,6 +51,17 @@
   color: var(--done);
   margin-left: 6px;
 }
+.item-assignee {
+  font-size: 12px;
+  color: var(--accent);
+  background: #eaf1ff;
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-left: 6px;
+}
+.row-assignee {
+  flex: 0 0 100px;
+}
 
 .muted {
   color: var(--muted);
@@ -96,6 +107,30 @@
 /* ── 목록 상단 ── */
 .list-head {
   margin-bottom: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+/* ── 사용자 관리 ── */
+.user-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.user-row-name {
+  font-size: 15px;
 }
 
 /* ── 게시글 목록 ── */

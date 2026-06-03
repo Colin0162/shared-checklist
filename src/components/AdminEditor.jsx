@@ -1,20 +1,13 @@
 import { useState } from 'react'
-import {
-  createBoard,
-  updateBoard,
-  deleteBoard,
-  insertItems,
-  updateItemStructure,
-  deleteItem,
-} from '../lib/api'
+import { saveBoard, deleteBoard } from '../lib/api'
 import ConfirmModal from './ConfirmModal'
 
 let seq = 0
 const newKey = () => 'k-' + ++seq
 
 // 관리자 게시글 빌더 (생성/편집).
-// props: board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
-function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
+// props: token, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
+function AdminEditor({ token, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
   const isNew = !board
 
   const [title, setTitle] = useState(board?.title ?? '')
@@ -34,6 +27,7 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
       label: it.label ?? '',
       quantity: it.quantity ?? '',
       show_note: it.show_note ?? false,
+      assignee: it.assignee ?? '',
     })),
   )
 
@@ -62,7 +56,10 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
   // ── 항목 조작 ──
   function addRow() {
     const lastGroup = rows.length ? rows[rows.length - 1].group_name : ''
-    setRows((r) => [...r, { key: newKey(), group_name: lastGroup, label: '', quantity: '', show_note: false }])
+    setRows((r) => [
+      ...r,
+      { key: newKey(), group_name: lastGroup, label: '', quantity: '', show_note: false, assignee: '' },
+    ])
   }
   function updateRow(key, field, value) {
     setRows((r) => r.map((row) => (row.key === key ? { ...row, [field]: value } : row)))
@@ -90,36 +87,27 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
     setErr('')
     try {
       const categoryList = categories.map((c) => c.name.trim()).filter(Boolean)
-      const fields = { title: title.trim(), mode, categories: categoryList }
-
-      const ordered = rows
+      // 항목 payload (라벨 빈 행 제외, 화면 순서대로 sort_order)
+      const itemsPayload = rows
         .filter((r) => r.label.trim())
-        .map((r, i) => ({ ...r, label: r.label.trim(), sort_order: i }))
-
-      if (isNew) {
-        const created = await createBoard({ ...fields, sort_order: nextSortOrder })
-        await insertItems(created.id, ordered)
-      } else {
-        await updateBoard(board.id, fields)
-        const toUpdate = ordered.filter((r) => r.id)
-        const toInsert = ordered.filter((r) => !r.id)
-        const keepIds = new Set(toUpdate.map((r) => r.id))
-        const toDelete = (originalItems ?? []).filter((it) => !keepIds.has(it.id))
-
-        await Promise.all([
-          ...toDelete.map((it) => deleteItem(it.id)),
-          ...toUpdate.map((r) =>
-            updateItemStructure(r.id, {
-              group_name: r.group_name || '',
-              label: r.label,
-              quantity: r.quantity || '',
-              show_note: r.show_note ?? false,
-              sort_order: r.sort_order,
-            }),
-          ),
-        ])
-        await insertItems(board.id, toInsert)
+        .map((r, i) => ({
+          ...(r.id ? { id: r.id } : {}),
+          group_name: r.group_name || '',
+          label: r.label.trim(),
+          quantity: mode === 'check' ? r.quantity || '' : '',
+          show_note: r.show_note ?? false,
+          assignee: r.assignee || '',
+          sort_order: i,
+        }))
+      const boardPayload = {
+        ...(isNew ? {} : { id: board.id }),
+        title: title.trim(),
+        mode,
+        categories: categoryList,
+        sort_order: isNew ? nextSortOrder : board.sort_order ?? 0,
       }
+      // 한 번의 RPC로 보드+항목 저장 (서버에서 관리자 검증 + 항목 diff로 체크상태 보존)
+      await saveBoard(token, boardPayload, itemsPayload)
       onSaved()
     } catch (e) {
       setErr(e.message)
@@ -129,7 +117,7 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
 
   async function handleDelete() {
     try {
-      await deleteBoard(board.id)
+      await deleteBoard(token, board.id)
       onDeleted()
     } catch (e) {
       setErr(e.message)
@@ -223,6 +211,12 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
                   placeholder="수량(선택)"
                 />
               )}
+              <input
+                className="text-input row-assignee"
+                value={row.assignee}
+                onChange={(e) => updateRow(row.key, 'assignee', e.target.value)}
+                placeholder="담당자(선택)"
+              />
               <label className="row-note" title="비고칸 사용">
                 <input
                   type="checkbox"

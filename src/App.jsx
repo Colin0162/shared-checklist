@@ -7,6 +7,7 @@ import Checklist from './components/Checklist'
 import AdminEditor from './components/AdminEditor'
 import ConfirmModal from './components/ConfirmModal'
 import Login from './components/Login'
+import UserAdmin from './components/UserAdmin'
 
 // 실시간 변경(payload)을 현재 items 목록에 반영
 function applyItemChange(prev, payload) {
@@ -25,7 +26,8 @@ function applyItemChange(prev, payload) {
 
 function loadUser() {
   try {
-    return JSON.parse(localStorage.getItem('user'))
+    const u = JSON.parse(localStorage.getItem('user'))
+    return u && u.token ? u : null // 토큰 없으면(구버전 세션) 재로그인 필요
   } catch {
     return null
   }
@@ -39,6 +41,7 @@ function App() {
   const [editing, setEditing] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [showUsers, setShowUsers] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
@@ -92,6 +95,7 @@ function App() {
     setUser(null)
     setOpenBoard(null)
     setEditing(false)
+    setShowUsers(false)
   }
 
   async function reloadBoards() {
@@ -134,7 +138,7 @@ function App() {
       prev.map((it) => (it.id === id ? { ...it, status, checked_by: checkedBy } : it)),
     )
     try {
-      await setItemStatus(id, status, checkedBy)
+      await setItemStatus(user.token, id, status)
     } catch (e) {
       setError(e.message)
     }
@@ -142,7 +146,7 @@ function App() {
   async function handleSetNote(id, note) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note } : it)))
     try {
-      await setItemNote(id, note)
+      await setItemNote(user.token, id, note)
     } catch (e) {
       setError(e.message)
     }
@@ -179,7 +183,7 @@ function App() {
 
   async function doReset() {
     try {
-      await resetBoard(openBoard.id)
+      await resetBoard(user.token, openBoard.id)
       await reloadItems(openBoard)
     } catch (e) {
       setError(e.message)
@@ -223,6 +227,7 @@ function App() {
 
       {!loading && editing && (
         <AdminEditor
+          token={user.token}
           board={editTarget}
           originalItems={editTarget ? items : []}
           nextSortOrder={nextSortOrder}
@@ -232,7 +237,15 @@ function App() {
         />
       )}
 
-      {!loading && !editing && openBoard && (
+      {!loading && !editing && showUsers && (
+        <UserAdmin
+          token={user.token}
+          currentName={user.name}
+          onBack={() => setShowUsers(false)}
+        />
+      )}
+
+      {!loading && !editing && !showUsers && openBoard && (
         <Checklist
           board={openBoard}
           items={items}
@@ -245,11 +258,12 @@ function App() {
         />
       )}
 
-      {!loading && !editing && !openBoard && (
+      {!loading && !editing && !showUsers && !openBoard && (
         <>
           {isAdmin && (
             <div className="list-head">
               <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+              <button className="btn" onClick={() => setShowUsers(true)}>사용자 관리</button>
             </div>
           )}
           <BoardList boards={boards} onOpen={openBoardById} />

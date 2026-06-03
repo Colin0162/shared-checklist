@@ -26,6 +26,7 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
           {mode === 'check' && item.quantity && (
             <span className="item-qty"> · {item.quantity}</span>
           )}
+          {item.assignee && <span className="item-assignee">담당: {item.assignee}</span>}
           {item.status && item.checked_by && (
             <span className="item-by">— {item.checked_by}</span>
           )}
