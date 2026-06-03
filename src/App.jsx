@@ -7,6 +7,21 @@ import Checklist from './components/Checklist'
 import AdminEditor from './components/AdminEditor'
 import ConfirmModal from './components/ConfirmModal'
 
+// 실시간 변경(payload)을 현재 items 목록에 반영
+function applyItemChange(prev, payload) {
+  if (payload.eventType === 'INSERT') {
+    if (prev.some((it) => it.id === payload.new.id)) return prev
+    return [...prev, payload.new].sort((a, b) => a.sort_order - b.sort_order)
+  }
+  if (payload.eventType === 'UPDATE') {
+    return prev.map((it) => (it.id === payload.new.id ? { ...it, ...payload.new } : it))
+  }
+  if (payload.eventType === 'DELETE') {
+    return prev.filter((it) => it.id !== payload.old.id)
+  }
+  return prev
+}
+
 function App() {
   const [boards, setBoards] = useState([])
   const [openBoard, setOpenBoard] = useState(null) // 보고 있는 게시글
@@ -26,6 +41,36 @@ function App() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
+
+  // 실시간: 게시글 목록 변경 구독 (새 글 생성/삭제 등)
+  useEffect(() => {
+    if (!supabase) return
+    const ch = supabase
+      .channel('boards-all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, () => {
+        getBoards().then(setBoards).catch(() => {})
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+  }, [])
+
+  // 실시간: 열려있는 게시글의 항목 변경 구독 (체크/비고 즉시 반영)
+  useEffect(() => {
+    if (!supabase || !openBoard) return
+    const ch = supabase
+      .channel('items-' + openBoard.id)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'items', filter: `board_id=eq.${openBoard.id}` },
+        (payload) => setItems((prev) => applyItemChange(prev, payload)),
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+  }, [openBoard])
 
   async function reloadBoards() {
     try {

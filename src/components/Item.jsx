@@ -8,6 +8,15 @@ import { RATINGS } from '../lib/constants'
 function Item({ item, mode, onSetStatus, onSetNote }) {
   const checked = item.status === 'done'
   const [noteDraft, setNoteDraft] = useState(item.note ?? '')
+  const [focused, setFocused] = useState(false)
+  const [syncedNote, setSyncedNote] = useState(item.note ?? '')
+
+  // 동시편집 충돌 방지: 내가 입력 중(focused)이 아닐 때만, 다른 사람이 바꾼
+  // 비고(item.note, 실시간)를 입력칸에 반영. (effect 대신 렌더 중 보정 — React 권장)
+  if (!focused && item.note !== syncedNote) {
+    setSyncedNote(item.note ?? '')
+    setNoteDraft(item.note ?? '')
+  }
 
   return (
     <li className={'item' + (mode === 'check' && checked ? ' checked' : '')}>
@@ -44,8 +53,10 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
           className="item-note-input"
           placeholder="비고 입력…"
           value={noteDraft}
+          onFocus={() => setFocused(true)}
           onChange={(e) => setNoteDraft(e.target.value)}
           onBlur={() => {
+            setFocused(false)
             if (noteDraft !== (item.note ?? '')) onSetNote(item.id, noteDraft)
           }}
         />
