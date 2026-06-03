@@ -1,37 +1,88 @@
-/* ── 헤더 / 탭 ── */
+/* ── 헤더 ── */
 .app-header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .app-header h1 {
   font-size: 22px;
-  margin: 4px 0 14px;
+  margin: 4px 0 8px;
 }
-.tabs {
-  display: inline-flex;
-  gap: 4px;
-  background: var(--card);
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-.tab {
-  border: none;
-  background: transparent;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 15px;
+
+.muted {
   color: var(--muted);
+  text-align: center;
+}
+.error {
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+/* ── 게시판 목록 ── */
+.board-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.board-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.board-card:hover {
+  border-color: var(--accent);
+}
+.board-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+}
+.board-meta {
+  font-size: 13px;
+  color: var(--muted);
+}
+.board-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── 체크리스트 헤더(뒤로 + 제목) ── */
+.checklist-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.back-btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: var(--text);
   cursor: pointer;
 }
-.tab.active {
-  background: var(--accent);
-  color: #fff;
+.board-heading {
+  font-size: 18px;
+  margin: 0;
 }
 
 /* ── 진행률 ── */
 .progress {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 .progress-text {
   font-size: 14px;
@@ -52,7 +103,7 @@
 
 /* ── 그룹 ── */
 .group {
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 .group-title {
   font-size: 14px;
@@ -69,36 +120,38 @@
   gap: 8px;
 }
 
-/* ── 항목 한 줄 ── */
+/* ── 항목 ── */
 .item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.item-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 .item.checked .item-label {
   text-decoration: line-through;
   color: var(--muted);
 }
 .item-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
   min-width: 0;
 }
 .item-label {
   font-size: 16px;
 }
-.item-note {
-  font-size: 13px;
+.item-qty {
+  font-size: 14px;
   color: var(--muted);
 }
 
-/* 체크박스 (준비물 모드) */
+/* 체크박스 (check 모드) */
 .item-checkbox {
   width: 22px;
   height: 22px;
@@ -107,7 +160,7 @@
   cursor: pointer;
 }
 
-/* 상/중/하 (장소 모드) */
+/* 상/중/하 (rate 모드) */
 .rating {
   display: flex;
   gap: 4px;
@@ -127,4 +180,23 @@
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+/* 비고 입력 (누구나) */
+.item-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--text);
+  background: #fafafa;
+  font-family: inherit;
+}
+.item-note-input:focus {
+  outline: none;
+  border-style: solid;
+  border-color: var(--accent);
+  background: #fff;
 }

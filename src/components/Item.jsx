@@ -1,47 +1,57 @@
-import { RATINGS } from '../data/checklists'
+import { useState } from 'react'
+import { RATINGS } from '../lib/constants'
 
-// 항목 한 줄을 그린다. 모드에 따라 오른쪽 컨트롤이 달라진다.
-//   check : 체크박스 1개
-//   rate  : 상/중/하 버튼 3개
-//
-// props (부모 Checklist가 내려준다):
-//   item        : { id, label, note }
+// 항목 한 줄. 위: 라벨(+수량) / 체크박스 or 상중하.  아래: 비고 입력(누구나).
+// props:
+//   item        : { id, label, quantity, status, note, ... }
 //   mode        : 'check' | 'rate'
-//   status      : 현재 상태 (true/false 또는 '상'|'중'|'하'|undefined)
-//   onSetStatus : (항목id, 새값) => void   ← 이벤트를 위로 올려보내는 콜백
-function Item({ item, mode, status, onSetStatus }) {
-  const checked = status === true
+//   onSetStatus : (id, 새상태) => void
+//   onSetNote   : (id, 새비고) => void
+function Item({ item, mode, onSetStatus, onSetNote }) {
+  const checked = item.status === 'done'
+
+  // 비고는 타이핑 중엔 로컬 상태로 두고, 포커스가 빠질 때(onBlur) DB에 저장
+  const [noteDraft, setNoteDraft] = useState(item.note ?? '')
 
   return (
     <li className={'item' + (mode === 'check' && checked ? ' checked' : '')}>
-      <div className="item-main">
-        <span className="item-label">{item.label}</span>
-        {item.note && <span className="item-note">{item.note}</span>}
+      <div className="item-body">
+        <span className="item-main">
+          <span className="item-label">{item.label}</span>
+          {item.quantity && <span className="item-qty"> · {item.quantity}</span>}
+        </span>
+
+        {mode === 'check' ? (
+          <input
+            type="checkbox"
+            className="item-checkbox"
+            checked={checked}
+            onChange={(e) => onSetStatus(item.id, e.target.checked ? 'done' : '')}
+          />
+        ) : (
+          <div className="rating">
+            {RATINGS.map((r) => (
+              <button
+                key={r}
+                className={item.status === r ? 'rate-btn active' : 'rate-btn'}
+                onClick={() => onSetStatus(item.id, item.status === r ? '' : r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {mode === 'check' ? (
-        // ── 체크박스 모드 (준비물) ──
-        <input
-          type="checkbox"
-          className="item-checkbox"
-          checked={checked}
-          onChange={(e) => onSetStatus(item.id, e.target.checked)}
-        />
-      ) : (
-        // ── 상/중/하 모드 (장소 답사) ──
-        <div className="rating">
-          {RATINGS.map((r) => (
-            <button
-              key={r}
-              className={status === r ? 'rate-btn active' : 'rate-btn'}
-              // 같은 등급을 다시 누르면 선택 해제(빈 값)
-              onClick={() => onSetStatus(item.id, status === r ? '' : r)}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-      )}
+      <input
+        className="item-note-input"
+        placeholder="비고 입력…"
+        value={noteDraft}
+        onChange={(e) => setNoteDraft(e.target.value)}
+        onBlur={() => {
+          if (noteDraft !== (item.note ?? '')) onSetNote(item.id, noteDraft)
+        }}
+      />
     </li>
   )
 }
