@@ -9,32 +9,31 @@ import {
 } from '../lib/api'
 import ConfirmModal from './ConfirmModal'
 
-// 새 행에 줄 임시 키 (DB id가 없는 행 구분용)
-let tmpCounter = 0
-const tmpKey = () => 'tmp-' + ++tmpCounter
+let seq = 0
+const newKey = () => 'k-' + ++seq
 
 // 관리자 게시글 빌더 (생성/편집).
-// props:
-//   board         : 편집 대상 게시글(없으면 새로 만들기)
-//   originalItems : 편집 대상의 기존 항목들(구조+상태) — diff용
-//   nextSortOrder : 새 게시글일 때 부여할 정렬값
-//   onSaved, onCancel, onDeleted
+// props: board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
 function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
   const isNew = !board
 
   const [title, setTitle] = useState(board?.title ?? '')
   const [mode, setMode] = useState(board?.mode ?? 'check')
-  const [showQuantity, setShowQuantity] = useState(board?.show_quantity ?? false)
-  const [showNote, setShowNote] = useState(board?.show_note ?? true)
 
-  // 편집용 행: { key, id?, group_name, label, quantity }
+  // 대항목(카테고리): [{ key, name }]
+  const [categories, setCategories] = useState(() =>
+    (board?.categories ?? []).map((name) => ({ key: newKey(), name })),
+  )
+
+  // 항목 행: { key, id?, group_name, label, quantity, show_note }
   const [rows, setRows] = useState(() =>
     (originalItems ?? []).map((it) => ({
       key: it.id,
       id: it.id,
-      group_name: it.group_name,
-      label: it.label,
-      quantity: it.quantity,
+      group_name: it.group_name ?? '',
+      label: it.label ?? '',
+      quantity: it.quantity ?? '',
+      show_note: it.show_note ?? false,
     })),
   )
 
@@ -42,9 +41,28 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
   const [err, setErr] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  // ── 카테고리 조작 ──
+  function addCategory() {
+    setCategories((c) => [...c, { key: newKey(), name: '' }])
+  }
+  function renameCategory(key, name) {
+    const old = categories.find((c) => c.key === key)?.name
+    setCategories((c) => c.map((x) => (x.key === key ? { ...x, name } : x)))
+    // 이 카테고리를 쓰던 항목들의 group_name 도 같이 바꿔줌
+    if (old && old !== name) {
+      setRows((rs) => rs.map((r) => (r.group_name === old ? { ...r, group_name: name } : r)))
+    }
+  }
+  function removeCategory(key) {
+    const name = categories.find((c) => c.key === key)?.name
+    setCategories((c) => c.filter((x) => x.key !== key))
+    if (name) setRows((rs) => rs.map((r) => (r.group_name === name ? { ...r, group_name: '' } : r)))
+  }
+
+  // ── 항목 조작 ──
   function addRow() {
     const lastGroup = rows.length ? rows[rows.length - 1].group_name : ''
-    setRows((r) => [...r, { key: tmpKey(), group_name: lastGroup, label: '', quantity: '' }])
+    setRows((r) => [...r, { key: newKey(), group_name: lastGroup, label: '', quantity: '', show_note: false }])
   }
   function updateRow(key, field, value) {
     setRows((r) => r.map((row) => (row.key === key ? { ...row, [field]: value } : row)))
@@ -71,14 +89,9 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
     setSaving(true)
     setErr('')
     try {
-      const fields = {
-        title: title.trim(),
-        mode,
-        show_quantity: showQuantity,
-        show_note: showNote,
-      }
+      const categoryList = categories.map((c) => c.name.trim()).filter(Boolean)
+      const fields = { title: title.trim(), mode, categories: categoryList }
 
-      // 라벨이 빈 행은 제외하고, 화면 순서대로 sort_order 부여
       const ordered = rows
         .filter((r) => r.label.trim())
         .map((r, i) => ({ ...r, label: r.label.trim(), sort_order: i }))
@@ -88,7 +101,6 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
         await insertItems(created.id, ordered)
       } else {
         await updateBoard(board.id, fields)
-        // 항목 diff: 기존 id는 update, 새 행은 insert, 빠진 기존은 delete (상태/비고 보존)
         const toUpdate = ordered.filter((r) => r.id)
         const toInsert = ordered.filter((r) => !r.id)
         const keepIds = new Set(toUpdate.map((r) => r.id))
@@ -101,6 +113,7 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
               group_name: r.group_name || '',
               label: r.label,
               quantity: r.quantity || '',
+              show_note: r.show_note ?? false,
               sort_order: r.sort_order,
             }),
           ),
@@ -124,6 +137,8 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
     }
   }
 
+  const categoryOptions = categories.map((c) => c.name.trim()).filter(Boolean)
+
   return (
     <section className="editor">
       <div className="editor-head">
@@ -146,73 +161,74 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
         <span className="field-label">형식</span>
         <div className="radio-row">
           <label>
-            <input
-              type="radio"
-              name="mode"
-              checked={mode === 'check'}
-              onChange={() => setMode('check')}
-            />
+            <input type="radio" name="mode" checked={mode === 'check'} onChange={() => setMode('check')} />
             체크박스
           </label>
           <label>
-            <input
-              type="radio"
-              name="mode"
-              checked={mode === 'rate'}
-              onChange={() => setMode('rate')}
-            />
+            <input type="radio" name="mode" checked={mode === 'rate'} onChange={() => setMode('rate')} />
             상·중·하 평가
           </label>
         </div>
       </div>
 
+      {/* 대항목(카테고리) */}
       <div className="field">
-        <span className="field-label">옵션</span>
-        <div className="radio-row">
-          <label>
-            <input
-              type="checkbox"
-              checked={showQuantity}
-              onChange={(e) => setShowQuantity(e.target.checked)}
-            />
-            수량 칸
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={showNote}
-              onChange={(e) => setShowNote(e.target.checked)}
-            />
-            비고 칸 (누구나 입력)
-          </label>
-        </div>
+        <span className="field-label">대항목 (카테고리)</span>
+        <ul className="cat-list">
+          {categories.map((c) => (
+            <li className="cat-row" key={c.key}>
+              <input
+                className="text-input"
+                value={c.name}
+                onChange={(e) => renameCategory(c.key, e.target.value)}
+                placeholder="예: 전체 필수품목"
+              />
+              <button className="icon-btn" onClick={() => removeCategory(c.key)} title="삭제">✕</button>
+            </li>
+          ))}
+        </ul>
+        <button className="btn" onClick={addCategory}>+ 대항목 추가</button>
       </div>
 
+      {/* 항목 */}
       <div className="field">
         <span className="field-label">항목</span>
         <ul className="editor-rows">
           {rows.map((row) => (
             <li className="editor-row" key={row.key}>
-              <input
-                className="text-input row-group"
+              <select
+                className="text-input row-cat"
                 value={row.group_name}
                 onChange={(e) => updateRow(row.key, 'group_name', e.target.value)}
-                placeholder="소제목(선택)"
-              />
+              >
+                <option value="">(대항목 없음)</option>
+                {categoryOptions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                {row.group_name && !categoryOptions.includes(row.group_name) && (
+                  <option value={row.group_name}>{row.group_name}</option>
+                )}
+              </select>
               <input
                 className="text-input row-label"
                 value={row.label}
                 onChange={(e) => updateRow(row.key, 'label', e.target.value)}
                 placeholder="항목명"
               />
-              {showQuantity && (
+              <input
+                className="text-input row-qty"
+                value={row.quantity}
+                onChange={(e) => updateRow(row.key, 'quantity', e.target.value)}
+                placeholder="수량(선택)"
+              />
+              <label className="row-note" title="비고칸 사용">
                 <input
-                  className="text-input row-qty"
-                  value={row.quantity}
-                  onChange={(e) => updateRow(row.key, 'quantity', e.target.value)}
-                  placeholder="수량"
+                  type="checkbox"
+                  checked={row.show_note}
+                  onChange={(e) => updateRow(row.key, 'show_note', e.target.checked)}
                 />
-              )}
+                비고
+              </label>
               <div className="row-actions">
                 <button className="icon-btn" onClick={() => move(row.key, -1)} title="위로">↑</button>
                 <button className="icon-btn" onClick={() => move(row.key, 1)} title="아래로">↓</button>

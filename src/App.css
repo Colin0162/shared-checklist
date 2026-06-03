@@ -141,15 +141,34 @@
   transition: width 0.25s ease;
 }
 
+/* ── 툴바(필터) ── */
+.toolbar {
+  margin-bottom: 16px;
+}
+
 /* ── 그룹 ── */
 .group {
   margin-bottom: 20px;
+}
+.group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 0 8px;
 }
 .group-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--muted);
-  margin: 0 0 8px;
+  margin: 0;
+}
+.group-title-muted {
+  font-weight: 500;
+  opacity: 0.7;
+}
+.group-progress {
+  font-size: 13px;
+  color: var(--muted);
 }
 .item-list {
   list-style: none;
@@ -279,6 +298,21 @@
   cursor: pointer;
 }
 
+/* 대항목(카테고리) 편집 */
+.cat-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cat-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .editor-rows {
   list-style: none;
   margin: 0 0 8px;
@@ -293,14 +327,22 @@
   align-items: center;
   flex-wrap: wrap;
 }
-.row-group {
-  flex: 0 0 110px;
+.row-cat {
+  flex: 0 0 130px;
 }
 .row-label {
   flex: 1 1 140px;
 }
 .row-qty {
   flex: 0 0 90px;
+}
+.row-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .row-actions {
   display: flex;

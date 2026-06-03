@@ -6,7 +6,7 @@ import { supabase } from './supabase'
 export async function getBoards() {
   const { data, error } = await supabase
     .from('boards')
-    .select('id, title, description, mode, show_quantity, show_note, event_date, sort_order')
+    .select('id, title, description, mode, categories, event_date, sort_order')
     .order('sort_order')
   if (error) throw error
   return data
@@ -15,7 +15,7 @@ export async function getBoards() {
 export async function getBoardItems(boardId) {
   const { data, error } = await supabase
     .from('items')
-    .select('id, group_name, label, quantity, sort_order, status, note, checked_by')
+    .select('id, group_name, label, quantity, show_note, sort_order, status, note, checked_by')
     .eq('board_id', boardId)
     .order('sort_order')
   if (error) throw error
@@ -78,6 +78,7 @@ export async function insertItems(boardId, items) {
     group_name: it.group_name || '',
     label: it.label || '',
     quantity: it.quantity || '',
+    show_note: it.show_note ?? false,
     sort_order: it.sort_order ?? 0,
   }))
   const { error } = await supabase.from('items').insert(rows)

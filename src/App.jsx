@@ -89,8 +89,18 @@ function App() {
   }
   async function handleSaved() {
     setEditing(false)
-    await reloadBoards()
-    if (openBoard) await reloadItems(openBoard)
+    try {
+      const fresh = await getBoards()
+      setBoards(fresh)
+      if (openBoard) {
+        // 편집으로 바뀐 게시글 객체(카테고리 등)도 최신으로 교체
+        const updated = fresh.find((b) => b.id === openBoard.id) || null
+        setOpenBoard(updated)
+        if (updated) await reloadItems(updated)
+      }
+    } catch (e) {
+      setError(e.message)
+    }
   }
   async function handleDeleted() {
     setEditing(false)

@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { RATINGS } from '../lib/constants'
 
-// 항목 한 줄. 위: 라벨(+수량) / 체크박스 or 상중하.  아래: 비고 입력(옵션).
-// props:
-//   item, mode
-//   showQuantity, showNote : 게시글 옵션
-//   onSetStatus(id, 새상태), onSetNote(id, 새비고)
-function Item({ item, mode, showQuantity, showNote, onSetStatus, onSetNote }) {
+// 항목 한 줄.
+//   위: 라벨(+수량 있으면 표시) / 체크박스 or 상중하
+//   아래: 비고 입력 — item.show_note 가 켜진 항목에만
+// props: item, mode, onSetStatus(id,상태), onSetNote(id,비고)
+function Item({ item, mode, onSetStatus, onSetNote }) {
   const checked = item.status === 'done'
   const [noteDraft, setNoteDraft] = useState(item.note ?? '')
 
@@ -15,9 +14,7 @@ function Item({ item, mode, showQuantity, showNote, onSetStatus, onSetNote }) {
       <div className="item-body">
         <span className="item-main">
           <span className="item-label">{item.label}</span>
-          {showQuantity && item.quantity && (
-            <span className="item-qty"> · {item.quantity}</span>
-          )}
+          {item.quantity && <span className="item-qty"> · {item.quantity}</span>}
         </span>
 
         {mode === 'check' ? (
@@ -42,7 +39,7 @@ function Item({ item, mode, showQuantity, showNote, onSetStatus, onSetNote }) {
         )}
       </div>
 
-      {showNote && (
+      {item.show_note && (
         <input
           className="item-note-input"
           placeholder="비고 입력…"
