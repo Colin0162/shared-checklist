@@ -26,8 +26,8 @@ function groupItems(items, categoryOrder) {
 }
 
 // 한 게시글의 체크리스트 화면.
-// props: board, items, onBack, onEdit, onReset, onSetStatus, onSetNote
-function Checklist({ board, items, onBack, onEdit, onReset, onSetStatus, onSetNote }) {
+// props: board, items, isAdmin, onBack, onEdit, onReset, onSetStatus, onSetNote
+function Checklist({ board, items, isAdmin, onBack, onEdit, onReset, onSetStatus, onSetNote }) {
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
   const mode = board.mode
 
@@ -44,10 +44,12 @@ function Checklist({ board, items, onBack, onEdit, onReset, onSetStatus, onSetNo
       <div className="checklist-head">
         <button className="back-btn" onClick={onBack}>← 목록</button>
         <h2 className="board-heading">{board.title}</h2>
-        <div className="head-actions">
-          <button className="btn" onClick={onEdit}>편집</button>
-          <button className="btn" onClick={onReset}>초기화</button>
-        </div>
+        {isAdmin && (
+          <div className="head-actions">
+            <button className="btn" onClick={onEdit}>편집</button>
+            <button className="btn" onClick={onReset}>초기화</button>
+          </div>
+        )}
       </div>
 
       <div className="progress">

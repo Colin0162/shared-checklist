@@ -6,6 +6,7 @@ import BoardList from './components/BoardList'
 import Checklist from './components/Checklist'
 import AdminEditor from './components/AdminEditor'
 import ConfirmModal from './components/ConfirmModal'
+import Login from './components/Login'
 
 // 실시간 변경(payload)을 현재 items 목록에 반영
 function applyItemChange(prev, payload) {
@@ -22,17 +23,27 @@ function applyItemChange(prev, payload) {
   return prev
 }
 
+function loadUser() {
+  try {
+    return JSON.parse(localStorage.getItem('user'))
+  } catch {
+    return null
+  }
+}
+
 function App() {
+  const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
-  const [openBoard, setOpenBoard] = useState(null) // 보고 있는 게시글
+  const [openBoard, setOpenBoard] = useState(null)
   const [items, setItems] = useState([])
-  const [editing, setEditing] = useState(false) // 편집기 열림 여부
-  const [editTarget, setEditTarget] = useState(null) // 편집 대상(없으면 새 글)
+  const [editing, setEditing] = useState(false)
+  const [editTarget, setEditTarget] = useState(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
   const configError = supabase ? '' : 'Supabase 연결 정보가 없습니다 (.env.local 확인).'
+  const isAdmin = Boolean(user?.is_admin)
 
   useEffect(() => {
     if (!supabase) return
@@ -42,7 +53,7 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
-  // 실시간: 게시글 목록 변경 구독 (새 글 생성/삭제 등)
+  // 실시간: 게시글 목록 변경 구독
   useEffect(() => {
     if (!supabase) return
     const ch = supabase
@@ -56,7 +67,7 @@ function App() {
     }
   }, [])
 
-  // 실시간: 열려있는 게시글의 항목 변경 구독 (체크/비고 즉시 반영)
+  // 실시간: 열려있는 게시글의 항목 변경 구독
   useEffect(() => {
     if (!supabase || !openBoard) return
     const ch = supabase
@@ -71,6 +82,17 @@ function App() {
       supabase.removeChannel(ch)
     }
   }, [openBoard])
+
+  function handleLogin(u) {
+    localStorage.setItem('user', JSON.stringify(u))
+    setUser(u)
+  }
+  function logout() {
+    localStorage.removeItem('user')
+    setUser(null)
+    setOpenBoard(null)
+    setEditing(false)
+  }
 
   async function reloadBoards() {
     try {
@@ -105,11 +127,14 @@ function App() {
     setItems([])
   }
 
-  // 협업 상태: 화면 먼저 갱신(낙관적) 후 DB 저장
+  // 체크: 화면 먼저 갱신 후 DB 저장 (누가 체크했는지 이름 기록)
   async function handleSetStatus(id, status) {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, status } : it)))
+    const checkedBy = status ? user?.name || '' : ''
+    setItems((prev) =>
+      prev.map((it) => (it.id === id ? { ...it, status, checked_by: checkedBy } : it)),
+    )
     try {
-      await setItemStatus(id, status)
+      await setItemStatus(id, status, checkedBy)
     } catch (e) {
       setError(e.message)
     }
@@ -123,7 +148,6 @@ function App() {
     }
   }
 
-  // 편집기 열기/닫기
   function openNew() {
     setEditTarget(null)
     setEditing(true)
@@ -138,7 +162,6 @@ function App() {
       const fresh = await getBoards()
       setBoards(fresh)
       if (openBoard) {
-        // 편집으로 바뀐 게시글 객체(카테고리 등)도 최신으로 교체
         const updated = fresh.find((b) => b.id === openBoard.id) || null
         setOpenBoard(updated)
         if (updated) await reloadItems(updated)
@@ -154,7 +177,6 @@ function App() {
     await reloadBoards()
   }
 
-  // 전체 초기화
   async function doReset() {
     try {
       await resetBoard(openBoard.id)
@@ -166,13 +188,32 @@ function App() {
     }
   }
 
-  const nextSortOrder =
-    boards.reduce((max, b) => Math.max(max, b.sort_order ?? 0), 0) + 1
+  const nextSortOrder = boards.reduce((max, b) => Math.max(max, b.sort_order ?? 0), 0) + 1
+
+  // 로그인 전: 로그인 화면만
+  if (supabase && !user) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <h1>체크리스트</h1>
+        </header>
+        <Login onLogin={handleLogin} />
+      </div>
+    )
+  }
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>체크리스트</h1>
+        {user && (
+          <div className="user-bar">
+            <span className="user-name">
+              {user.name}님{isAdmin ? ' (관리자)' : ''}
+            </span>
+            <button className="btn btn-small" onClick={logout}>로그아웃</button>
+          </div>
+        )}
       </header>
 
       {(configError || error) && (
@@ -180,7 +221,6 @@ function App() {
       )}
       {loading && <p className="muted">불러오는 중…</p>}
 
-      {/* 편집기 */}
       {!loading && editing && (
         <AdminEditor
           board={editTarget}
@@ -192,11 +232,11 @@ function App() {
         />
       )}
 
-      {/* 게시글 화면 */}
       {!loading && !editing && openBoard && (
         <Checklist
           board={openBoard}
           items={items}
+          isAdmin={isAdmin}
           onBack={goBack}
           onEdit={openEdit}
           onReset={() => setConfirmReset(true)}
@@ -205,12 +245,13 @@ function App() {
         />
       )}
 
-      {/* 게시글 목록 */}
       {!loading && !editing && !openBoard && (
         <>
-          <div className="list-head">
-            <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
-          </div>
+          {isAdmin && (
+            <div className="list-head">
+              <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+            </div>
+          )}
           <BoardList boards={boards} onOpen={openBoardById} />
         </>
       )}

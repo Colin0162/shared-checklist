@@ -2,6 +2,19 @@ import { supabase } from './supabase'
 
 // DB 접근을 한곳에 모은 모듈. 화면 컴포넌트는 이 함수들만 호출한다.
 
+// ── 인증 (이름+PIN, RPC로 검증) ────────────────────────
+export async function register(name, pin) {
+  const { data, error } = await supabase.rpc('register', { p_name: name, p_pin: pin })
+  if (error) throw error
+  return data // { ok, name, is_admin } 또는 { ok:false, error }
+}
+
+export async function login(name, pin) {
+  const { data, error } = await supabase.rpc('login', { p_name: name, p_pin: pin })
+  if (error) throw error
+  return data
+}
+
 // ── 읽기 ──────────────────────────────────────────────
 export async function getBoards() {
   const { data, error } = await supabase
@@ -23,10 +36,10 @@ export async function getBoardItems(boardId) {
 }
 
 // ── 협업 상태 변경 (누구나) ────────────────────────────
-export async function setItemStatus(id, status) {
+export async function setItemStatus(id, status, checkedBy = '') {
   const { error } = await supabase
     .from('items')
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status, checked_by: checkedBy, updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
 }

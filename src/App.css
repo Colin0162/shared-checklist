@@ -7,6 +7,50 @@
   font-size: 22px;
   margin: 4px 0 8px;
 }
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.user-name {
+  color: var(--muted);
+}
+.btn-small {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+/* ── 로그인 ── */
+.login {
+  max-width: 320px;
+  margin: 40px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.login h2 {
+  text-align: center;
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.login-actions {
+  display: flex;
+  gap: 8px;
+}
+.login-actions .btn {
+  flex: 1;
+}
+.login-hint {
+  font-size: 13px;
+  margin-top: 4px;
+}
+.item-by {
+  font-size: 13px;
+  color: var(--done);
+  margin-left: 6px;
+}
 
 .muted {
   color: var(--muted);
