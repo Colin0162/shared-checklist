@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import { supabase } from './lib/supabase'
-import { getBoards, getBoardItems, setItemStatus, setItemNote } from './lib/api'
+import { getBoards, getBoardItems, setItemStatus, setItemNote, resetBoard } from './lib/api'
 import BoardList from './components/BoardList'
 import Checklist from './components/Checklist'
+import AdminEditor from './components/AdminEditor'
+import ConfirmModal from './components/ConfirmModal'
 
 function App() {
   const [boards, setBoards] = useState([])
-  const [openBoard, setOpenBoard] = useState(null) // 선택된 게시판(없으면 목록 화면)
+  const [openBoard, setOpenBoard] = useState(null) // 보고 있는 게시글
   const [items, setItems] = useState([])
-  // supabase가 없으면 처음부터 로딩 아님(=설정 오류 메시지를 바로 보여줌)
+  const [editing, setEditing] = useState(false) // 편집기 열림 여부
+  const [editTarget, setEditTarget] = useState(null) // 편집 대상(없으면 새 글)
+  const [confirmReset, setConfirmReset] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
-  // supabase 미설정은 effect가 아니라 렌더 시점에 판단 (effect 안 동기 setState 회피)
   const configError = supabase ? '' : 'Supabase 연결 정보가 없습니다 (.env.local 확인).'
 
-  // 처음 진입 시 게시판 목록 로드
   useEffect(() => {
     if (!supabase) return
     getBoards()
@@ -25,7 +27,21 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
-  // 게시판 열기 → 항목 로드
+  async function reloadBoards() {
+    try {
+      setBoards(await getBoards())
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function reloadItems(board) {
+    try {
+      setItems(await getBoardItems(board.id))
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   async function openBoardById(board) {
     setLoading(true)
     setError('')
@@ -44,7 +60,7 @@ function App() {
     setItems([])
   }
 
-  // 화면을 먼저 바꾸고(낙관적 업데이트) DB에 저장 → 반응이 빠르게 느껴진다
+  // 협업 상태: 화면 먼저 갱신(낙관적) 후 DB 저장
   async function handleSetStatus(id, status) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, status } : it)))
     try {
@@ -53,7 +69,6 @@ function App() {
       setError(e.message)
     }
   }
-
   async function handleSetNote(id, note) {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note } : it)))
     try {
@@ -62,6 +77,42 @@ function App() {
       setError(e.message)
     }
   }
+
+  // 편집기 열기/닫기
+  function openNew() {
+    setEditTarget(null)
+    setEditing(true)
+  }
+  function openEdit() {
+    setEditTarget(openBoard)
+    setEditing(true)
+  }
+  async function handleSaved() {
+    setEditing(false)
+    await reloadBoards()
+    if (openBoard) await reloadItems(openBoard)
+  }
+  async function handleDeleted() {
+    setEditing(false)
+    setOpenBoard(null)
+    setItems([])
+    await reloadBoards()
+  }
+
+  // 전체 초기화
+  async function doReset() {
+    try {
+      await resetBoard(openBoard.id)
+      await reloadItems(openBoard)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setConfirmReset(false)
+    }
+  }
+
+  const nextSortOrder =
+    boards.reduce((max, b) => Math.max(max, b.sort_order ?? 0), 0) + 1
 
   return (
     <div className="app">
@@ -74,17 +125,47 @@ function App() {
       )}
       {loading && <p className="muted">불러오는 중…</p>}
 
-      {!loading && !openBoard && (
-        <BoardList boards={boards} onOpen={openBoardById} />
+      {/* 편집기 */}
+      {!loading && editing && (
+        <AdminEditor
+          board={editTarget}
+          originalItems={editTarget ? items : []}
+          nextSortOrder={nextSortOrder}
+          onSaved={handleSaved}
+          onCancel={() => setEditing(false)}
+          onDeleted={handleDeleted}
+        />
       )}
 
-      {!loading && openBoard && (
+      {/* 게시글 화면 */}
+      {!loading && !editing && openBoard && (
         <Checklist
           board={openBoard}
           items={items}
           onBack={goBack}
+          onEdit={openEdit}
+          onReset={() => setConfirmReset(true)}
           onSetStatus={handleSetStatus}
           onSetNote={handleSetNote}
+        />
+      )}
+
+      {/* 게시글 목록 */}
+      {!loading && !editing && !openBoard && (
+        <>
+          <div className="list-head">
+            <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+          </div>
+          <BoardList boards={boards} onOpen={openBoardById} />
+        </>
+      )}
+
+      {confirmReset && openBoard && (
+        <ConfirmModal
+          message={`'${openBoard.title}'의 체크를 모두 초기화할까요?`}
+          confirmLabel="초기화"
+          onConfirm={doReset}
+          onCancel={() => setConfirmReset(false)}
         />
       )}
     </div>

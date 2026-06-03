@@ -20,7 +20,41 @@
   border-radius: 8px;
 }
 
-/* ── 게시판 목록 ── */
+/* ── 공용 버튼 ── */
+.btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn:hover {
+  border-color: var(--accent);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btn-danger {
+  background: #fff;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+/* ── 목록 상단 ── */
+.list-head {
+  margin-bottom: 12px;
+}
+
+/* ── 게시글 목록 ── */
 .board-list {
   list-style: none;
   margin: 0;
@@ -59,12 +93,13 @@
   margin-top: 4px;
 }
 
-/* ── 체크리스트 헤더(뒤로 + 제목) ── */
+/* ── 체크리스트 헤더 ── */
 .checklist-head {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 .back-btn {
   border: 1px solid var(--border);
@@ -78,6 +113,11 @@
 .board-heading {
   font-size: 18px;
   margin: 0;
+  flex: 1;
+}
+.head-actions {
+  display: flex;
+  gap: 6px;
 }
 
 /* ── 진행률 ── */
@@ -150,8 +190,6 @@
   font-size: 14px;
   color: var(--muted);
 }
-
-/* 체크박스 (check 모드) */
 .item-checkbox {
   width: 22px;
   height: 22px;
@@ -159,8 +197,6 @@
   accent-color: var(--done);
   cursor: pointer;
 }
-
-/* 상/중/하 (rate 모드) */
 .rating {
   display: flex;
   gap: 4px;
@@ -181,8 +217,6 @@
   border-color: var(--accent);
   color: #fff;
 }
-
-/* 비고 입력 (누구나) */
 .item-note-input {
   width: 100%;
   box-sizing: border-box;
@@ -199,4 +233,128 @@
   border-style: solid;
   border-color: var(--accent);
   background: #fff;
+}
+
+/* ── 관리자 편집기 ── */
+.editor-head h2 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+.field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.text-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 15px;
+  color: var(--text);
+  background: #fff;
+  font-family: inherit;
+}
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.radio-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 15px;
+}
+.radio-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.editor-rows {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.editor-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.row-group {
+  flex: 0 0 110px;
+}
+.row-label {
+  flex: 1 1 140px;
+}
+.row-qty {
+  flex: 0 0 90px;
+}
+.row-actions {
+  display: flex;
+  gap: 4px;
+}
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+}
+.icon-btn:hover {
+  border-color: var(--accent);
+}
+
+.editor-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  gap: 8px;
+}
+.editor-foot-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── 모달 ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 100;
+}
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 360px;
+  width: 100%;
+}
+.modal-msg {
+  margin: 0 0 16px;
+  font-size: 15px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }

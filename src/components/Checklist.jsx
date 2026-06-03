@@ -1,6 +1,6 @@
 import Item from './Item'
 
-// 평평한 items 배열을 group_name 기준으로 묶는다 (DB는 한 줄씩 저장하므로).
+// 평평한 items 배열을 group_name 기준으로 묶는다.
 function groupItems(items) {
   const groups = []
   const indexByName = new Map()
@@ -15,9 +15,9 @@ function groupItems(items) {
   return groups
 }
 
-// 한 게시판의 체크리스트 화면.
-// props: board, items, onBack, onSetStatus, onSetNote
-function Checklist({ board, items, onBack, onSetStatus, onSetNote }) {
+// 한 게시글의 체크리스트 화면.
+// props: board, items, onBack, onEdit, onReset, onSetStatus, onSetNote
+function Checklist({ board, items, onBack, onEdit, onReset, onSetStatus, onSetNote }) {
   const total = items.length
   const done = items.filter((it) =>
     board.mode === 'check' ? it.status === 'done' : Boolean(it.status),
@@ -31,6 +31,10 @@ function Checklist({ board, items, onBack, onSetStatus, onSetNote }) {
       <div className="checklist-head">
         <button className="back-btn" onClick={onBack}>← 목록</button>
         <h2 className="board-heading">{board.title}</h2>
+        <div className="head-actions">
+          <button className="btn" onClick={onEdit}>편집</button>
+          <button className="btn" onClick={onReset}>초기화</button>
+        </div>
       </div>
 
       <div className="progress">
@@ -51,6 +55,8 @@ function Checklist({ board, items, onBack, onSetStatus, onSetNote }) {
                 key={item.id}
                 item={item}
                 mode={board.mode}
+                showQuantity={board.show_quantity}
+                showNote={board.show_note}
                 onSetStatus={onSetStatus}
                 onSetNote={onSetNote}
               />
