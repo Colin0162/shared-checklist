@@ -23,7 +23,9 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
       <div className="item-body">
         <span className="item-main">
           <span className="item-label">{item.label}</span>
-          {item.quantity && <span className="item-qty"> · {item.quantity}</span>}
+          {mode === 'check' && item.quantity && (
+            <span className="item-qty"> · {item.quantity}</span>
+          )}
           {item.status && item.checked_by && (
             <span className="item-by">— {item.checked_by}</span>
           )}

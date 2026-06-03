@@ -58,9 +58,7 @@ function Login({ onLogin }) {
           로그인
         </button>
       </div>
-      <p className="muted login-hint">
-        처음이면 '가입'을 누르세요. 첫 사용자는 자동으로 관리자가 됩니다.
-      </p>
+      <p className="muted login-hint">처음이면 '가입'을 누르세요.</p>
     </div>
   )
 }

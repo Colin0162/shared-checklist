@@ -215,12 +215,14 @@ function AdminEditor({ board, originalItems, nextSortOrder, onSaved, onCancel, o
                 onChange={(e) => updateRow(row.key, 'label', e.target.value)}
                 placeholder="항목명"
               />
-              <input
-                className="text-input row-qty"
-                value={row.quantity}
-                onChange={(e) => updateRow(row.key, 'quantity', e.target.value)}
-                placeholder="수량(선택)"
-              />
+              {mode === 'check' && (
+                <input
+                  className="text-input row-qty"
+                  value={row.quantity}
+                  onChange={(e) => updateRow(row.key, 'quantity', e.target.value)}
+                  placeholder="수량(선택)"
+                />
+              )}
               <label className="row-note" title="비고칸 사용">
                 <input
                   type="checkbox"
