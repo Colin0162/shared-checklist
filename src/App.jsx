@@ -9,6 +9,8 @@ import {
   resetBoard,
   verifyBoardAdmin,
   verifyBoardEntry,
+  verifySiteAdmin,
+  siteDeleteBoard,
 } from './lib/api'
 import BoardList from './components/BoardList'
 import Checklist from './components/Checklist'
@@ -51,6 +53,10 @@ function App() {
   const [entryPrompt, setEntryPrompt] = useState(null) // 입장 비번 받을 board
   const [adminPrompt, setAdminPrompt] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [sitePrompt, setSitePrompt] = useState(false)
+  const [siteAdmin, setSiteAdmin] = useState(false)
+  const [siteAdminPw, setSiteAdminPw] = useState('')
+  const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
@@ -229,6 +235,29 @@ function App() {
     }
   }
 
+  async function submitSite(pw) {
+    try {
+      const res = await verifySiteAdmin(pw)
+      if (!res.ok) return res.error || '실패'
+      setSiteAdmin(true)
+      setSiteAdminPw(pw)
+      setSitePrompt(false)
+      return null
+    } catch (e) {
+      return e.message
+    }
+  }
+  async function doDeleteBoardSite() {
+    try {
+      await siteDeleteBoard(siteAdminPw, confirmDeleteBoard.id)
+      await reloadBoards()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setConfirmDeleteBoard(null)
+    }
+  }
+
   const nextSortOrder = boards.reduce((max, b) => Math.max(max, b.sort_order ?? 0), 0) + 1
 
   if (supabase && !user) {
@@ -289,8 +318,26 @@ function App() {
         <>
           <div className="list-head">
             <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+            {siteAdmin ? (
+              <button
+                className="btn"
+                onClick={() => {
+                  setSiteAdmin(false)
+                  setSiteAdminPw('')
+                }}
+              >
+                사이트 관리 해제
+              </button>
+            ) : (
+              <button className="btn" onClick={() => setSitePrompt(true)}>사이트 관리자</button>
+            )}
           </div>
-          <BoardList boards={boards} onOpen={tryOpen} />
+          <BoardList
+            boards={boards}
+            onOpen={tryOpen}
+            siteAdmin={siteAdmin}
+            onDelete={(b) => setConfirmDeleteBoard(b)}
+          />
         </>
       )}
 
@@ -314,6 +361,21 @@ function App() {
           confirmLabel="초기화"
           onConfirm={doReset}
           onCancel={() => setConfirmReset(false)}
+        />
+      )}
+      {sitePrompt && (
+        <PasswordPrompt
+          title="사이트 관리자 비밀번호"
+          onSubmit={submitSite}
+          onCancel={() => setSitePrompt(false)}
+        />
+      )}
+      {confirmDeleteBoard && (
+        <ConfirmModal
+          message={`'${confirmDeleteBoard.title}' 게시글을 삭제할까요?`}
+          confirmLabel="삭제"
+          onConfirm={doDeleteBoardSite}
+          onCancel={() => setConfirmDeleteBoard(null)}
         />
       )}
     </div>

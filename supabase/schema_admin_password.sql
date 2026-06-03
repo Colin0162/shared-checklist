@@ -187,3 +187,38 @@ grant execute on function public.reset_board(uuid,text)                      to 
 grant execute on function public.verify_board_admin(uuid,text)              to anon, authenticated;
 grant execute on function public.verify_board_entry(uuid,text)              to anon, authenticated;
 grant execute on function public.set_memo(uuid,text)                         to anon, authenticated;
+
+-- ── 사이트 관리자 (전역 비번으로 아무 게시글이나 삭제) ──
+create table if not exists public.app_admin (
+  id int primary key default 1,
+  password_hash text not null,
+  constraint app_admin_singleton check (id = 1)
+);
+alter table public.app_admin enable row level security;  -- anon 차단
+-- 기본 사이트 관리자 비번 '0000' (최초 1회). 나중에 바꾸려면 이 행 update.
+insert into public.app_admin (id, password_hash)
+select 1, extensions.crypt('0000', extensions.gen_salt('bf'))
+where not exists (select 1 from public.app_admin where id = 1);
+
+create or replace function public.verify_site_admin(p_pw text)
+returns json language plpgsql security definer set search_path = public, extensions as $$
+declare v_hash text;
+begin
+  select password_hash into v_hash from public.app_admin where id = 1;
+  if v_hash is not null and v_hash = crypt(p_pw, v_hash) then return json_build_object('ok', true);
+  else return json_build_object('ok', false, 'error', '비밀번호가 올바르지 않습니다.'); end if;
+end; $$;
+
+create or replace function public.site_delete_board(p_pw text, p_board_id uuid)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+declare v_hash text;
+begin
+  select password_hash into v_hash from public.app_admin where id = 1;
+  if v_hash is null or v_hash <> crypt(p_pw, v_hash) then
+    raise exception '사이트 관리자 비밀번호가 올바르지 않습니다.';
+  end if;
+  delete from public.boards where id = p_board_id;
+end; $$;
+
+grant execute on function public.verify_site_admin(text)        to anon, authenticated;
+grant execute on function public.site_delete_board(text,uuid)   to anon, authenticated;

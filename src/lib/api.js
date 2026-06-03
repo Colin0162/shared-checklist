@@ -94,3 +94,14 @@ export async function verifyBoardEntry(boardId, pw) {
   if (error) throw error
   return data
 }
+
+// ── 사이트 관리자 ──
+export async function verifySiteAdmin(pw) {
+  const { data, error } = await supabase.rpc('verify_site_admin', { p_pw: pw })
+  if (error) throw error
+  return data
+}
+export async function siteDeleteBoard(pw, boardId) {
+  const { error } = await supabase.rpc('site_delete_board', { p_pw: pw, p_board_id: boardId })
+  if (error) throw error
+}
