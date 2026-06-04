@@ -9,7 +9,6 @@ import {
   resetBoard,
   verifyBoardAdmin,
   verifyBoardEntry,
-  verifySiteAdmin,
   siteDeleteBoard,
 } from './lib/api'
 import BoardList from './components/BoardList'
@@ -18,6 +17,7 @@ import AdminEditor from './components/AdminEditor'
 import ConfirmModal from './components/ConfirmModal'
 import Login from './components/Login'
 import PasswordPrompt from './components/PasswordPrompt'
+import Clock from './components/Clock'
 
 function applyItemChange(prev, payload) {
   if (payload.eventType === 'INSERT') {
@@ -36,7 +36,7 @@ function applyItemChange(prev, payload) {
 function loadUser() {
   try {
     const u = JSON.parse(localStorage.getItem('user'))
-    return u && u.name ? u : null
+    return u && u.name && u.token ? u : null // 토큰 없으면(구버전) 재로그인
   } catch {
     return null
   }
@@ -53,9 +53,6 @@ function App() {
   const [entryPrompt, setEntryPrompt] = useState(null) // 입장 비번 받을 board
   const [adminPrompt, setAdminPrompt] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
-  const [sitePrompt, setSitePrompt] = useState(false)
-  const [siteAdmin, setSiteAdmin] = useState(false)
-  const [siteAdminPw, setSiteAdminPw] = useState('')
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
@@ -106,7 +103,7 @@ function App() {
   }, [openBoard])
 
   function handleLogin(u) {
-    const value = { name: u.name }
+    const value = { name: u.name, is_site_admin: u.is_site_admin, token: u.token }
     localStorage.setItem('user', JSON.stringify(value))
     setUser(value)
   }
@@ -235,21 +232,9 @@ function App() {
     }
   }
 
-  async function submitSite(pw) {
-    try {
-      const res = await verifySiteAdmin(pw)
-      if (!res.ok) return res.error || '실패'
-      setSiteAdmin(true)
-      setSiteAdminPw(pw)
-      setSitePrompt(false)
-      return null
-    } catch (e) {
-      return e.message
-    }
-  }
   async function doDeleteBoardSite() {
     try {
-      await siteDeleteBoard(siteAdminPw, confirmDeleteBoard.id)
+      await siteDeleteBoard(user.token, confirmDeleteBoard.id)
       await reloadBoards()
     } catch (e) {
       setError(e.message)
@@ -276,10 +261,15 @@ function App() {
       <header className="app-header">
         <h1>체크리스트</h1>
         {user && (
-          <div className="user-bar">
-            <span className="user-name">{user.name}님</span>
-            <button className="btn btn-small" onClick={logout}>로그아웃</button>
-          </div>
+          <>
+            <div className="user-bar">
+              <span className="user-name">
+                {user.name}님{user.is_site_admin ? ' (사이트 관리자)' : ''}
+              </span>
+              <button className="btn btn-small" onClick={logout}>로그아웃</button>
+            </div>
+            <Clock />
+          </>
         )}
       </header>
 
@@ -318,24 +308,11 @@ function App() {
         <>
           <div className="list-head">
             <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
-            {siteAdmin ? (
-              <button
-                className="btn"
-                onClick={() => {
-                  setSiteAdmin(false)
-                  setSiteAdminPw('')
-                }}
-              >
-                사이트 관리 해제
-              </button>
-            ) : (
-              <button className="btn" onClick={() => setSitePrompt(true)}>사이트 관리자</button>
-            )}
           </div>
           <BoardList
             boards={boards}
             onOpen={tryOpen}
-            siteAdmin={siteAdmin}
+            siteAdmin={Boolean(user.is_site_admin)}
             onDelete={(b) => setConfirmDeleteBoard(b)}
           />
         </>
@@ -361,13 +338,6 @@ function App() {
           confirmLabel="초기화"
           onConfirm={doReset}
           onCancel={() => setConfirmReset(false)}
-        />
-      )}
-      {sitePrompt && (
-        <PasswordPrompt
-          title="사이트 관리자 비밀번호"
-          onSubmit={submitSite}
-          onCancel={() => setSitePrompt(false)}
         />
       )}
       {confirmDeleteBoard && (

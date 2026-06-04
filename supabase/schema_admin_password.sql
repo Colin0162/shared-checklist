@@ -19,6 +19,18 @@ alter table public.items  add column if not exists assignee text not null defaul
 alter table public.boards drop constraint if exists boards_mode_check;
 alter table public.boards add  constraint boards_mode_check check (mode in ('check','rate','todo'));
 
+-- 사이트 관리자: 예약된 계정(anrhks456)이 로그인하면 자동 사이트 관리자
+alter table public.users add column if not exists is_site_admin boolean not null default false;
+update public.users set is_site_admin = true where name = 'anrhks456';
+
+-- 세션(사이트 관리자 작업 인증용 토큰)
+create table if not exists public.sessions (
+  token      uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.sessions enable row level security;  -- anon 차단
+
 -- 비밀번호 해시 보관 (anon 직접 접근 불가)
 create table if not exists public.board_secrets (
   board_id   uuid primary key references public.boards(id) on delete cascade,
@@ -37,23 +49,27 @@ where not exists (select 1 from public.board_secrets s where s.board_id = b.id);
 -- ── 로그인/가입 (토큰/관리자 없음) ──
 create or replace function public.register(p_name text, p_pin text)
 returns json language plpgsql security definer set search_path = public, extensions as $$
-declare v_name text := btrim(p_name);
+declare v_name text := btrim(p_name); v_admin boolean; v_id uuid; v_token uuid;
 begin
-  if v_name = '' or btrim(p_pin) = '' then return json_build_object('ok', false, 'error', '이름과 PIN을 입력하세요.'); end if;
+  if v_name = '' or btrim(p_pin) = '' then return json_build_object('ok', false, 'error', '이름과 비밀번호를 입력하세요.'); end if;
   if exists (select 1 from public.users where name = v_name) then return json_build_object('ok', false, 'error', '이미 있는 이름입니다.'); end if;
-  insert into public.users (name, pin_hash) values (v_name, crypt(p_pin, gen_salt('bf')));
-  return json_build_object('ok', true, 'name', v_name);
+  v_admin := (v_name = 'anrhks456');
+  insert into public.users (name, pin_hash, is_site_admin)
+  values (v_name, crypt(p_pin, gen_salt('bf')), v_admin) returning id into v_id;
+  insert into public.sessions (user_id) values (v_id) returning token into v_token;
+  return json_build_object('ok', true, 'name', v_name, 'is_site_admin', v_admin, 'token', v_token);
 end; $$;
 
 create or replace function public.login(p_name text, p_pin text)
 returns json language plpgsql security definer set search_path = public, extensions as $$
-declare v_user public.users;
+declare v_user public.users; v_token uuid;
 begin
   select * into v_user from public.users where name = btrim(p_name);
   if v_user.id is null or v_user.pin_hash <> crypt(p_pin, v_user.pin_hash) then
-    return json_build_object('ok', false, 'error', '이름 또는 PIN이 올바르지 않습니다.');
+    return json_build_object('ok', false, 'error', '이름 또는 비밀번호가 올바르지 않습니다.');
   end if;
-  return json_build_object('ok', true, 'name', v_user.name);
+  insert into public.sessions (user_id) values (v_user.id) returning token into v_token;
+  return json_build_object('ok', true, 'name', v_user.name, 'is_site_admin', v_user.is_site_admin, 'token', v_token);
 end; $$;
 
 -- ── 편집 비번 확인 헬퍼 (내부 전용) ──
@@ -188,37 +204,21 @@ grant execute on function public.verify_board_admin(uuid,text)              to a
 grant execute on function public.verify_board_entry(uuid,text)              to anon, authenticated;
 grant execute on function public.set_memo(uuid,text)                         to anon, authenticated;
 
--- ── 사이트 관리자 (전역 비번으로 아무 게시글이나 삭제) ──
-create table if not exists public.app_admin (
-  id int primary key default 1,
-  password_hash text not null,
-  constraint app_admin_singleton check (id = 1)
-);
-alter table public.app_admin enable row level security;  -- anon 차단
--- 기본 사이트 관리자 비번 '0000' (최초 1회). 나중에 바꾸려면 이 행 update.
-insert into public.app_admin (id, password_hash)
-select 1, extensions.crypt('0000', extensions.gen_salt('bf'))
-where not exists (select 1 from public.app_admin where id = 1);
+-- ── 사이트 관리자 (예약 계정 anrhks456) ──
+drop function if exists public.verify_site_admin(text);
+drop function if exists public.site_delete_board(text, uuid);
+drop table if exists public.app_admin;
 
-create or replace function public.verify_site_admin(p_pw text)
-returns json language plpgsql security definer set search_path = public, extensions as $$
-declare v_hash text;
+-- 사이트 관리자(세션 토큰의 주인이 is_site_admin)면 아무 게시글이나 삭제
+create or replace function public.site_delete_board(p_token text, p_board_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_admin boolean;
 begin
-  select password_hash into v_hash from public.app_admin where id = 1;
-  if v_hash is not null and v_hash = crypt(p_pw, v_hash) then return json_build_object('ok', true);
-  else return json_build_object('ok', false, 'error', '비밀번호가 올바르지 않습니다.'); end if;
-end; $$;
-
-create or replace function public.site_delete_board(p_pw text, p_board_id uuid)
-returns void language plpgsql security definer set search_path = public, extensions as $$
-declare v_hash text;
-begin
-  select password_hash into v_hash from public.app_admin where id = 1;
-  if v_hash is null or v_hash <> crypt(p_pw, v_hash) then
-    raise exception '사이트 관리자 비밀번호가 올바르지 않습니다.';
-  end if;
+  select u.is_site_admin into v_admin
+  from public.sessions s join public.users u on u.id = s.user_id
+  where s.token::text = p_token;
+  if not coalesce(v_admin, false) then raise exception '사이트 관리자만 가능합니다.'; end if;
   delete from public.boards where id = p_board_id;
 end; $$;
 
-grant execute on function public.verify_site_admin(text)        to anon, authenticated;
-grant execute on function public.site_delete_board(text,uuid)   to anon, authenticated;
+grant execute on function public.site_delete_board(text,uuid) to anon, authenticated;

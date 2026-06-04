@@ -95,13 +95,8 @@ export async function verifyBoardEntry(boardId, pw) {
   return data
 }
 
-// ── 사이트 관리자 ──
-export async function verifySiteAdmin(pw) {
-  const { data, error } = await supabase.rpc('verify_site_admin', { p_pw: pw })
-  if (error) throw error
-  return data
-}
-export async function siteDeleteBoard(pw, boardId) {
-  const { error } = await supabase.rpc('site_delete_board', { p_pw: pw, p_board_id: boardId })
+// ── 사이트 관리자 (예약 계정으로 로그인한 경우) ──
+export async function siteDeleteBoard(token, boardId) {
+  const { error } = await supabase.rpc('site_delete_board', { p_token: token, p_board_id: boardId })
   if (error) throw error
 }

@@ -17,6 +17,12 @@
 .user-name {
   color: var(--muted);
 }
+.clock {
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 6px 0 0;
+}
 .btn-small {
   padding: 4px 10px;
   font-size: 13px;
