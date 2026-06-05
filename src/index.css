@@ -1,23 +1,24 @@
 /* ───────────────────────────────────────────────────────────
    디자인 색상·기본값 모음 — 여기만 바꿔도 앱 전체 톤이 바뀝니다.
+   톤: 깔끔/전문 + 따뜻·편안 (차가운 회색 대신 따뜻한 크림/모래색)
    (자세한 수정법은 프로젝트 루트의 EDITING_GUIDE.md 참고)
    ─────────────────────────────────────────────────────────── */
 :root {
-  --bg: #f2f4f7; /* 화면 배경 */
+  --bg: #f6f4ef; /* 화면 배경 (따뜻한 크림) */
   --card: #ffffff; /* 카드(게시글/항목) 배경 */
-  --text: #1f2937; /* 기본 글씨 */
-  --muted: #6b7280; /* 흐린 글씨(설명·메타) */
-  --border: #e6e8ec; /* 테두리/구분선 */
-  --accent: #2563eb; /* 강조색(버튼·링크·선택) */
-  --accent-weak: #eaf1ff; /* 강조 연한 배경 */
-  --done: #16a34a; /* 완료/체크 초록 */
-  --done-weak: #e7f6ec; /* 완료 연한 배경 */
-  --danger: #dc2626; /* 삭제/경고 */
+  --text: #2a2622; /* 기본 글씨 (따뜻한 차콜) */
+  --muted: #837a6f; /* 흐린 글씨(설명·메타) */
+  --border: #ebe4da; /* 테두리/구분선 (따뜻한 연갈) */
+  --accent: #4f46e5; /* 강조색(버튼·링크·선택) 차분한 인디고 */
+  --accent-weak: #eceafe; /* 강조 연한 배경 */
+  --done: #15a34a; /* 완료/체크 초록 */
+  --done-weak: #e7f4ea; /* 완료 연한 배경 */
+  --danger: #d1453b; /* 삭제/경고 (따뜻한 빨강) */
 
-  --radius: 12px;
-  --radius-sm: 9px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.07);
-  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.14);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(70, 55, 40, 0.05), 0 2px 6px rgba(70, 55, 40, 0.06);
+  --shadow-lg: 0 14px 36px rgba(70, 55, 40, 0.16);
 
   font-family: system-ui, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', sans-serif;
   color: var(--text);
@@ -35,7 +36,7 @@ body {
   background: var(--bg);
   font-size: 16px;
   line-height: 1.55;
-  /* 한글은 단어 단위로 줄바꿈(어색하게 글자 중간 안 끊김), 긴 영문/URL은 강제 줄바꿈 */
+  /* 한글은 단어 단위로 줄바꿈, 긴 영문/URL은 강제 줄바꿈 */
   word-break: keep-all;
   overflow-wrap: break-word;
 }
