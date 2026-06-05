@@ -31,6 +31,10 @@ create table if not exists public.sessions (
 );
 alter table public.sessions enable row level security;  -- anon 차단
 
+-- 가입 승인제: status(pending/approved). 기존 가입정보 전부 삭제(요청).
+alter table public.users add column if not exists status text not null default 'pending';
+delete from public.users;  -- 모든 사용자 삭제(sessions cascade). anrhks456 재가입 시 자동 관리자+승인.
+
 -- 비밀번호 해시 보관 (anon 직접 접근 불가)
 create table if not exists public.board_secrets (
   board_id   uuid primary key references public.boards(id) on delete cascade,
@@ -54,10 +58,15 @@ begin
   if v_name = '' or btrim(p_pin) = '' then return json_build_object('ok', false, 'error', '이름과 비밀번호를 입력하세요.'); end if;
   if exists (select 1 from public.users where name = v_name) then return json_build_object('ok', false, 'error', '이미 있는 이름입니다.'); end if;
   v_admin := (v_name = 'anrhks456');
-  insert into public.users (name, pin_hash, is_site_admin)
-  values (v_name, crypt(p_pin, gen_salt('bf')), v_admin) returning id into v_id;
-  insert into public.sessions (user_id) values (v_id) returning token into v_token;
-  return json_build_object('ok', true, 'name', v_name, 'is_site_admin', v_admin, 'token', v_token);
+  insert into public.users (name, pin_hash, is_site_admin, status)
+  values (v_name, crypt(p_pin, gen_salt('bf')), v_admin,
+          case when v_admin then 'approved' else 'pending' end)
+  returning id into v_id;
+  if v_admin then
+    insert into public.sessions (user_id) values (v_id) returning token into v_token;
+    return json_build_object('ok', true, 'name', v_name, 'is_site_admin', true, 'token', v_token);
+  end if;
+  return json_build_object('ok', true, 'pending', true);  -- 일반 가입은 승인 대기
 end; $$;
 
 create or replace function public.login(p_name text, p_pin text)
@@ -67,6 +76,9 @@ begin
   select * into v_user from public.users where name = btrim(p_name);
   if v_user.id is null or v_user.pin_hash <> crypt(p_pin, v_user.pin_hash) then
     return json_build_object('ok', false, 'error', '이름 또는 비밀번호가 올바르지 않습니다.');
+  end if;
+  if v_user.status <> 'approved' then
+    return json_build_object('ok', false, 'error', '가입 승인 대기 중입니다. 강무관(필립보)에게 연락하세요.');
   end if;
   insert into public.sessions (user_id) values (v_user.id) returning token into v_token;
   return json_build_object('ok', true, 'name', v_user.name, 'is_site_admin', v_user.is_site_admin, 'token', v_token);
@@ -222,3 +234,36 @@ begin
 end; $$;
 
 grant execute on function public.site_delete_board(text,uuid) to anon, authenticated;
+
+-- ── 가입 승인 (사이트 관리자) ──
+create or replace function public._is_site_admin(p_token text)
+returns boolean language sql security definer set search_path = public as $$
+  select coalesce((select u.is_site_admin from public.sessions s
+    join public.users u on u.id = s.user_id where s.token::text = p_token), false);
+$$;
+revoke all on function public._is_site_admin(text) from public;
+
+create or replace function public.list_pending_users(p_token text)
+returns table(id uuid, name text) language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_site_admin(p_token) then raise exception '사이트 관리자만 가능합니다.'; end if;
+  return query select u.id, u.name from public.users u where u.status = 'pending' order by u.created_at;
+end; $$;
+
+create or replace function public.approve_user(p_token text, p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_site_admin(p_token) then raise exception '사이트 관리자만 가능합니다.'; end if;
+  update public.users set status = 'approved' where id = p_user_id;
+end; $$;
+
+create or replace function public.reject_user(p_token text, p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_site_admin(p_token) then raise exception '사이트 관리자만 가능합니다.'; end if;
+  delete from public.users where id = p_user_id and status = 'pending';
+end; $$;
+
+grant execute on function public.list_pending_users(text)      to anon, authenticated;
+grant execute on function public.approve_user(text,uuid)       to anon, authenticated;
+grant execute on function public.reject_user(text,uuid)        to anon, authenticated;

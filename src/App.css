@@ -280,6 +280,22 @@
 /* ── 툴바(필터) ── */
 .toolbar {
   margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.filter-select {
+  width: auto;
+  padding: 8px 10px;
+}
+.info-box {
+  background: #eef7ee;
+  border: 1px solid #cce8cc;
+  color: #256029;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
 }
 
 /* ── 그룹 ── */

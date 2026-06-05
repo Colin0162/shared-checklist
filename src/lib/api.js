@@ -100,3 +100,16 @@ export async function siteDeleteBoard(token, boardId) {
   const { error } = await supabase.rpc('site_delete_board', { p_token: token, p_board_id: boardId })
   if (error) throw error
 }
+export async function listPendingUsers(token) {
+  const { data, error } = await supabase.rpc('list_pending_users', { p_token: token })
+  if (error) throw error
+  return data
+}
+export async function approveUser(token, userId) {
+  const { error } = await supabase.rpc('approve_user', { p_token: token, p_user_id: userId })
+  if (error) throw error
+}
+export async function rejectUser(token, userId) {
+  const { error } = await supabase.rpc('reject_user', { p_token: token, p_user_id: userId })
+  if (error) throw error
+}

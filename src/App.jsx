@@ -18,6 +18,7 @@ import ConfirmModal from './components/ConfirmModal'
 import Login from './components/Login'
 import PasswordPrompt from './components/PasswordPrompt'
 import Clock from './components/Clock'
+import PendingUsers from './components/PendingUsers'
 
 function applyItemChange(prev, payload) {
   if (payload.eventType === 'INSERT') {
@@ -54,6 +55,7 @@ function App() {
   const [adminPrompt, setAdminPrompt] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
+  const [showPending, setShowPending] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
@@ -113,6 +115,7 @@ function App() {
     setOpenBoard(null)
     setEditing(false)
     setAdminPw(null)
+    setShowPending(false)
   }
 
   async function reloadBoards() {
@@ -289,7 +292,11 @@ function App() {
         />
       )}
 
-      {!loading && !editing && openBoard && (
+      {!loading && !editing && showPending && (
+        <PendingUsers token={user.token} onBack={() => setShowPending(false)} />
+      )}
+
+      {!loading && !editing && !showPending && openBoard && (
         <Checklist
           board={openBoard}
           items={items}
@@ -304,10 +311,13 @@ function App() {
         />
       )}
 
-      {!loading && !editing && !openBoard && (
+      {!loading && !editing && !showPending && !openBoard && (
         <>
           <div className="list-head">
             <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+            {user.is_site_admin && (
+              <button className="btn" onClick={() => setShowPending(true)}>가입 신청</button>
+            )}
           </div>
           <BoardList
             boards={boards}

@@ -39,8 +39,10 @@ function Checklist({
   onSetNote,
 }) {
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
+  const [assigneeFilter, setAssigneeFilter] = useState('')
   const mode = board.mode
   const isTodo = mode === 'todo'
+  const assignees = [...new Set(items.map((it) => it.assignee).filter(Boolean))]
 
   const total = items.length
   const doneCount = items.filter((it) => isDone(it, mode)).length
@@ -48,7 +50,8 @@ function Checklist({
   const doneLabel = mode === 'check' ? '완료' : '평가함'
 
   const groups = groupItems(items, board.categories)
-  const visible = (it) => !unfinishedOnly || !isDone(it, mode)
+  const visible = (it) =>
+    (!unfinishedOnly || !isDone(it, mode)) && (!assigneeFilter || it.assignee === assigneeFilter)
 
   return (
     <section className="checklist">
@@ -88,6 +91,20 @@ function Checklist({
             >
               {unfinishedOnly ? '전체 보기' : '미완료만 보기'}
             </button>
+            {assignees.length > 0 && (
+              <select
+                className="text-input filter-select"
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+              >
+                <option value="">담당자 전체</option>
+                {assignees.map((a) => (
+                  <option key={a} value={a}>
+                    담당: {a}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </>
       )}

@@ -75,9 +75,10 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
       </div>
 
       {item.show_note && (
-        <input
+        <textarea
           className="item-note-input"
-          placeholder="비고 입력…"
+          rows={2}
+          placeholder="비고 입력… (줄바꿈 가능)"
           value={noteDraft}
           onFocus={() => setFocused(true)}
           onChange={(e) => setNoteDraft(e.target.value)}

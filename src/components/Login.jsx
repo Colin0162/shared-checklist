@@ -1,21 +1,23 @@
 import { useState } from 'react'
 import { login, register } from '../lib/api'
 
-// 이름 + PIN 로그인/가입 화면.
-// props: onLogin(user) — user = { name, is_admin }
+// 이름(세례명) + 비밀번호 로그인 / 가입 신청.
+// props: onLogin(user) — user = { name, is_site_admin, token }
 function Login({ onLogin }) {
   const [name, setName] = useState('')
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [info, setInfo] = useState('')
 
   async function submit(kind) {
     if (!name.trim() || !pin.trim()) {
-      setErr('이름과 PIN을 입력하세요.')
+      setErr('이름과 비밀번호를 입력하세요.')
       return
     }
     setBusy(true)
     setErr('')
+    setInfo('')
     try {
       const fn = kind === 'register' ? register : login
       const res = await fn(name.trim(), pin.trim())
@@ -24,7 +26,13 @@ function Login({ onLogin }) {
         setBusy(false)
         return
       }
-      onLogin({ name: res.name, is_admin: res.is_admin })
+      if (res.pending) {
+        // 가입 신청만 됨 (관리자 승인 대기)
+        setInfo('가입 신청이 접수되었습니다. 강무관(필립보)에게 연락해 승인을 받으세요.')
+        setBusy(false)
+        return
+      }
+      onLogin({ name: res.name, is_site_admin: res.is_site_admin, token: res.token })
     } catch (e) {
       setErr(e.message)
       setBusy(false)
@@ -36,7 +44,7 @@ function Login({ onLogin }) {
       <h2>로그인</h2>
       <input
         className="text-input"
-        placeholder="이름"
+        placeholder="이름(세례명) 예: 강무관(필립보)"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
@@ -49,15 +57,18 @@ function Login({ onLogin }) {
         onKeyDown={(e) => e.key === 'Enter' && submit('login')}
       />
       {err && <p className="error">오류: {err}</p>}
+      {info && <p className="info-box">{info}</p>}
       <div className="login-actions">
         <button className="btn" onClick={() => submit('register')} disabled={busy}>
-          가입
+          가입 신청
         </button>
         <button className="btn btn-primary" onClick={() => submit('login')} disabled={busy}>
           로그인
         </button>
       </div>
-      <p className="muted login-hint">처음이면 '가입'을 누르세요.</p>
+      <p className="muted login-hint">
+        처음이면 '가입 신청' → 관리자 승인 후 로그인. 비밀번호를 잊으셨다면 강무관(필립보)에게 문의하세요.
+      </p>
     </div>
   )
 }

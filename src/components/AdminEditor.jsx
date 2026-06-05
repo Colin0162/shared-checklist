@@ -253,7 +253,7 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
                 value={row.group_name}
                 onChange={(e) => updateRow(row.key, 'group_name', e.target.value)}
               >
-                <option value="">(대항목 없음)</option>
+                <option value="">—</option>
                 {categoryOptions.map((name) => (
                   <option key={name} value={name}>{name}</option>
                 ))}
