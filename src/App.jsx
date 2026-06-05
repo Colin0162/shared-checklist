@@ -317,7 +317,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>체크리스트</h1>
+        <h1>청년회 체크리스트</h1>
         {user && (
           <>
             <div className="user-bar">
