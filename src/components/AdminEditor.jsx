@@ -54,6 +54,30 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
   const [tplName, setTplName] = useState('')
   const [selectedTpl, setSelectedTpl] = useState('')
 
+  // 표(일정표) 빌더 상태
+  const [tableColumns, setTableColumns] = useState(() => board?.table_data?.columns ?? [])
+  const [tableRows, setTableRows] = useState(() => board?.table_data?.rows ?? [])
+  function addColumn() {
+    setTableColumns((c) => [...c, ''])
+    setTableRows((rs) => rs.map((r) => [...r, '']))
+  }
+  function removeColumn(ci) {
+    setTableColumns((c) => c.filter((_, i) => i !== ci))
+    setTableRows((rs) => rs.map((r) => r.filter((_, i) => i !== ci)))
+  }
+  function renameColumn(ci, val) {
+    setTableColumns((c) => c.map((x, i) => (i === ci ? val : x)))
+  }
+  function addTableRow() {
+    setTableRows((rs) => [...rs, tableColumns.map(() => '')])
+  }
+  function removeTableRow(ri) {
+    setTableRows((rs) => rs.filter((_, i) => i !== ri))
+  }
+  function updateCell(ri, ci, val) {
+    setTableRows((rs) => rs.map((r, i) => (i === ri ? r.map((c, j) => (j === ci ? val : c)) : r)))
+  }
+
   useEffect(() => {
     if (!token) return
     getTemplates(token)
@@ -192,6 +216,9 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         event_date: eventDate || '', // 행사일(D-day). 빈 값이면 없음
         sort_order: isNew ? nextSortOrder : board.sort_order ?? 0,
       }
+      if (mode === 'table') {
+        boardPayload.table_data = { columns: tableColumns, rows: tableRows }
+      }
       if (isNew) {
         const entryPw = entryMode === 'password' ? newEntryPw.trim() : ''
         await createBoard(author, boardPayload, itemsPayload, newAdminPw.trim(), entryPw)
@@ -259,6 +286,10 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           <label>
             <input type="radio" name="mode" checked={mode === 'todo'} onChange={() => setMode('todo')} />
             할 일 리스트
+          </label>
+          <label>
+            <input type="radio" name="mode" checked={mode === 'table'} onChange={() => setMode('table')} />
+            일정표 / 표
           </label>
         </div>
       </div>
@@ -337,6 +368,61 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         </>
       )}
 
+      {mode === 'table' ? (
+        <div className="field">
+          <span className="field-label">표 구성 (열 이름 + 행 내용, 링크 붙여넣기 가능)</span>
+          <div className="table-wrap">
+            <table className="data-table editor-table">
+              <thead>
+                <tr>
+                  {tableColumns.map((col, ci) => (
+                    <th key={ci}>
+                      <input
+                        className="text-input"
+                        value={col}
+                        onChange={(e) => renameColumn(ci, e.target.value)}
+                        placeholder={`열 ${ci + 1}`}
+                      />
+                      <button className="icon-btn" onClick={() => removeColumn(ci)} title="열 삭제">✕</button>
+                    </th>
+                  ))}
+                  <th>
+                    <button className="btn btn-small" onClick={addColumn}>+ 열</button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map((row, ri) => (
+                  <tr key={ri}>
+                    {tableColumns.map((_, ci) => (
+                      <td key={ci}>
+                        <textarea
+                          className="text-input cell-input"
+                          rows={1}
+                          value={row[ci] ?? ''}
+                          onChange={(e) => updateCell(ri, ci, e.target.value)}
+                        />
+                      </td>
+                    ))}
+                    <td>
+                      <button className="icon-btn" onClick={() => removeTableRow(ri)} title="행 삭제">✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button
+            className="btn"
+            onClick={addTableRow}
+            disabled={tableColumns.length === 0}
+            style={{ marginTop: 8 }}
+          >
+            + 행 추가
+          </button>
+        </div>
+      ) : (
+        <>
       {/* 대항목(카테고리) */}
       <div className="field">
         <span className="field-label">대항목 (카테고리)</span>
@@ -427,7 +513,10 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         </ul>
         <button className="btn" onClick={addRow}>+ 항목 추가</button>
       </div>
+        </>
+      )}
 
+      {mode !== 'table' && (
       <div className="field">
         {showSaveTpl ? (
           <div className="folder-new">
@@ -446,6 +535,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           </button>
         )}
       </div>
+      )}
 
       <div className="editor-foot">
         <div className="editor-foot-left">

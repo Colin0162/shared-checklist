@@ -15,9 +15,12 @@ alter table public.boards add column if not exists memo               text    no
 -- 항목 담당자(#4)
 alter table public.items  add column if not exists assignee text not null default '';
 
--- 형식에 '할 일 리스트'(todo) 추가 허용
+-- 형식에 '할 일 리스트'(todo), '일정표/표'(table) 추가 허용
 alter table public.boards drop constraint if exists boards_mode_check;
-alter table public.boards add  constraint boards_mode_check check (mode in ('check','rate','todo'));
+alter table public.boards add  constraint boards_mode_check check (mode in ('check','rate','todo','table'));
+
+-- 표(일정표) 데이터: { columns: [열이름...], rows: [[셀,셀...], ...] }
+alter table public.boards add column if not exists table_data jsonb not null default '{"columns":[],"rows":[]}'::jsonb;
 
 -- 사이트 관리자: 예약된 계정(anrhks456)이 로그인하면 자동 사이트 관리자
 alter table public.users add column if not exists is_site_admin boolean not null default false;
@@ -115,11 +118,12 @@ returns uuid language plpgsql security definer set search_path = public, extensi
 declare v_id uuid;
 begin
   if btrim(coalesce(p_admin_pw,'')) = '' then raise exception '관리자 비밀번호를 설정하세요.'; end if;
-  insert into public.boards (title, mode, categories, created_by, has_entry_password, folder_id, event_date, sort_order)
+  insert into public.boards (title, mode, categories, created_by, has_entry_password, folder_id, event_date, table_data, sort_order)
   values (coalesce(p_board->>'title',''), coalesce(p_board->>'mode','check'),
           coalesce(p_board->'categories','[]'::jsonb), coalesce(p_author,''),
           (btrim(coalesce(p_entry_pw,'')) <> ''),
           nullif(p_board->>'folder_id','')::uuid, nullif(p_board->>'event_date','')::date,
+          coalesce(p_board->'table_data', '{"columns":[],"rows":[]}'::jsonb),
           coalesce((p_board->>'sort_order')::int, 0))
   returning id into v_id;
   insert into public.board_secrets (board_id, entry_hash, admin_hash)
@@ -141,7 +145,8 @@ begin
     title = coalesce(p_board->>'title', title),
     mode = coalesce(p_board->>'mode', mode),
     categories = coalesce(p_board->'categories', '[]'::jsonb),
-    event_date = nullif(p_board->>'event_date', '')::date
+    event_date = nullif(p_board->>'event_date', '')::date,
+    table_data = coalesce(p_board->'table_data', table_data)
   where id = p_board_id;
 
   v_keep := coalesce((select array_agg((e->>'id')::uuid)

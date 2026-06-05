@@ -17,7 +17,7 @@ export async function getBoards() {
   const { data, error } = await supabase
     .from('boards')
     .select(
-      'id, title, description, mode, categories, created_by, has_entry_password, memo, folder_id, event_date, sort_order',
+      'id, title, description, mode, categories, created_by, has_entry_password, memo, folder_id, event_date, table_data, sort_order',
     )
     .order('sort_order')
   if (error) throw error

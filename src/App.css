@@ -400,6 +400,44 @@
   text-decoration: underline;
 }
 
+/* 일정표 / 표 */
+.table-wrap {
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+.data-table {
+  border-collapse: collapse;
+  width: 100%;
+  background: var(--card);
+}
+.data-table th,
+.data-table td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px;
+}
+.data-table th {
+  background: #f1f3f5;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.data-table td {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.editor-table th {
+  white-space: normal;
+}
+.editor-table .text-input {
+  min-width: 90px;
+}
+.cell-input {
+  min-width: 120px;
+  resize: vertical;
+}
+
 /* ── 항목 ── */
 .item {
   background: var(--card);

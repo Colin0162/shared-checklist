@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Item from './Item'
+import TableView from './TableView'
 import { ddayLabel } from '../lib/constants'
 
 const isDone = (it, mode) => (mode === 'check' ? it.status === 'done' : Boolean(it.status))
@@ -43,6 +44,7 @@ function Checklist({
   const [assigneeFilter, setAssigneeFilter] = useState('')
   const mode = board.mode
   const isTodo = mode === 'todo'
+  const isTable = mode === 'table'
   const assignees = [...new Set(items.map((it) => it.assignee).filter(Boolean))]
 
   const total = items.length
@@ -64,7 +66,9 @@ function Checklist({
           {adminMode ? (
             <>
               <button className="btn" onClick={onEdit}>편집</button>
-              <button className="btn" onClick={onReset}>초기화</button>
+              {(mode === 'check' || mode === 'rate') && (
+                <button className="btn" onClick={onReset}>초기화</button>
+              )}
               <button className="btn btn-small" onClick={onExitAdmin}>관리자 해제</button>
             </>
           ) : (
@@ -75,6 +79,10 @@ function Checklist({
 
       {board.created_by && <p className="board-author">작성자: {board.created_by}</p>}
 
+      {isTable ? (
+        <TableView data={board.table_data} />
+      ) : (
+        <>
       {!isTodo && (
         <>
           <div className="progress">
@@ -138,6 +146,8 @@ function Checklist({
           </div>
         )
       })}
+        </>
+      )}
     </section>
   )
 }
