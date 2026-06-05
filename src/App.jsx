@@ -1,3 +1,7 @@
+// App.jsx = 화면 전환의 '교통정리' 파일.
+//   로그인 → 폴더 목록 → (폴더 안) 게시글 목록 → 게시글(체크리스트) → 편집
+//   각 화면 조각은 src/components/* 에 있음. 어떤 파일이 어느 화면인지,
+//   무엇을 바꾸면 어디가 바뀌는지는 → 프로젝트 루트의 EDITING_GUIDE.md 참고.
 import { useState, useEffect } from 'react'
 import './App.css'
 import { supabase } from './lib/supabase'
