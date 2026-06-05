@@ -115,6 +115,25 @@
   margin-bottom: 12px;
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+.folder-title {
+  flex: 1;
+  font-weight: 600;
+}
+.folder-new {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.folder-new .text-input {
+  flex: 1 1 140px;
 }
 
 /* ── 사용자 관리 ── */

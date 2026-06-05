@@ -10,8 +10,12 @@ import {
   verifyBoardAdmin,
   verifyBoardEntry,
   siteDeleteBoard,
+  getFolders,
+  createFolder,
+  deleteFolder,
 } from './lib/api'
 import BoardList from './components/BoardList'
+import FolderList from './components/FolderList'
 import Checklist from './components/Checklist'
 import AdminEditor from './components/AdminEditor'
 import ConfirmModal from './components/ConfirmModal'
@@ -46,6 +50,9 @@ function loadUser() {
 function App() {
   const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
+  const [folders, setFolders] = useState([])
+  const [openFolder, setOpenFolder] = useState(null) // 보고 있는 폴더(없으면 폴더 목록)
+  const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null)
   const [openBoard, setOpenBoard] = useState(null)
   const [items, setItems] = useState([])
   const [adminPw, setAdminPw] = useState(null) // 관리자 모드면 편집 비번 보관
@@ -63,8 +70,11 @@ function App() {
 
   useEffect(() => {
     if (!supabase) return
-    getBoards()
-      .then(setBoards)
+    Promise.all([getBoards(), getFolders()])
+      .then(([bs, fs]) => {
+        setBoards(bs)
+        setFolders(fs)
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
@@ -113,6 +123,7 @@ function App() {
     localStorage.removeItem('user')
     setUser(null)
     setOpenBoard(null)
+    setOpenFolder(null)
     setEditing(false)
     setAdminPw(null)
     setShowPending(false)
@@ -123,6 +134,31 @@ function App() {
       setBoards(await getBoards())
     } catch (e) {
       setError(e.message)
+    }
+  }
+  async function reloadFolders() {
+    try {
+      setFolders(await getFolders())
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function doCreateFolder(name, isPrivate) {
+    try {
+      await createFolder(user.token, name, isPrivate)
+      await reloadFolders()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+  async function doDeleteFolder() {
+    try {
+      await deleteFolder(user.token, confirmDeleteFolder.id)
+      await reloadFolders()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setConfirmDeleteFolder(null)
     }
   }
 
@@ -283,6 +319,7 @@ function App() {
         <AdminEditor
           author={user.name}
           adminPw={adminPw}
+          folderId={openFolder?.id || ''}
           board={editTarget}
           originalItems={editTarget ? items : []}
           nextSortOrder={nextSortOrder}
@@ -311,19 +348,40 @@ function App() {
         />
       )}
 
-      {!loading && !editing && !showPending && !openBoard && (
+      {/* 폴더 안: 그 폴더의 게시글 목록 */}
+      {!loading && !editing && !showPending && !openBoard && openFolder && (
         <>
           <div className="list-head">
+            <button className="back-btn" onClick={() => setOpenFolder(null)}>← 폴더</button>
+            <span className="folder-title">
+              {openFolder.is_private ? '🔒 ' : '📁 '}
+              {openFolder.name}
+            </span>
             <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
-            {user.is_site_admin && (
-              <button className="btn" onClick={() => setShowPending(true)}>가입 신청</button>
-            )}
           </div>
           <BoardList
-            boards={boards}
+            boards={boards.filter((b) => b.folder_id === openFolder.id)}
             onOpen={tryOpen}
             siteAdmin={Boolean(user.is_site_admin)}
             onDelete={(b) => setConfirmDeleteBoard(b)}
+          />
+        </>
+      )}
+
+      {/* 최상위: 폴더 목록 */}
+      {!loading && !editing && !showPending && !openBoard && !openFolder && (
+        <>
+          {user.is_site_admin && (
+            <div className="list-head">
+              <button className="btn" onClick={() => setShowPending(true)}>가입 신청</button>
+            </div>
+          )}
+          <FolderList
+            folders={folders.filter((f) => !f.is_private || f.owner === user.name)}
+            onOpen={(f) => setOpenFolder(f)}
+            onNew={doCreateFolder}
+            onDelete={(f) => setConfirmDeleteFolder(f)}
+            canDelete={(f) => (f.is_private ? f.owner === user.name : Boolean(user.is_site_admin))}
           />
         </>
       )}
@@ -356,6 +414,14 @@ function App() {
           confirmLabel="삭제"
           onConfirm={doDeleteBoardSite}
           onCancel={() => setConfirmDeleteBoard(null)}
+        />
+      )}
+      {confirmDeleteFolder && (
+        <ConfirmModal
+          message={`'${confirmDeleteFolder.name}' 폴더를 삭제할까요?`}
+          confirmLabel="삭제"
+          onConfirm={doDeleteFolder}
+          onCancel={() => setConfirmDeleteFolder(null)}
         />
       )}
     </div>

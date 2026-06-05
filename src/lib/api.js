@@ -17,7 +17,7 @@ export async function getBoards() {
   const { data, error } = await supabase
     .from('boards')
     .select(
-      'id, title, description, mode, categories, created_by, has_entry_password, memo, event_date, sort_order',
+      'id, title, description, mode, categories, created_by, has_entry_password, memo, folder_id, event_date, sort_order',
     )
     .order('sort_order')
   if (error) throw error
@@ -93,6 +93,29 @@ export async function verifyBoardEntry(boardId, pw) {
   const { data, error } = await supabase.rpc('verify_board_entry', { p_board_id: boardId, p_pw: pw })
   if (error) throw error
   return data
+}
+
+// ── 폴더 (#4) ──
+export async function getFolders() {
+  const { data, error } = await supabase
+    .from('folders')
+    .select('id, name, owner, is_private, sort_order')
+    .order('sort_order')
+  if (error) throw error
+  return data
+}
+export async function createFolder(token, name, isPrivate) {
+  const { data, error } = await supabase.rpc('create_folder', {
+    p_token: token,
+    p_name: name,
+    p_is_private: isPrivate,
+  })
+  if (error) throw error
+  return data
+}
+export async function deleteFolder(token, folderId) {
+  const { error } = await supabase.rpc('delete_folder', { p_token: token, p_folder_id: folderId })
+  if (error) throw error
 }
 
 // ── 사이트 관리자 (예약 계정으로 로그인한 경우) ──

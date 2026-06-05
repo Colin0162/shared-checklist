@@ -114,10 +114,11 @@ returns uuid language plpgsql security definer set search_path = public, extensi
 declare v_id uuid;
 begin
   if btrim(coalesce(p_admin_pw,'')) = '' then raise exception '관리자 비밀번호를 설정하세요.'; end if;
-  insert into public.boards (title, mode, categories, created_by, has_entry_password, sort_order)
+  insert into public.boards (title, mode, categories, created_by, has_entry_password, folder_id, sort_order)
   values (coalesce(p_board->>'title',''), coalesce(p_board->>'mode','check'),
           coalesce(p_board->'categories','[]'::jsonb), coalesce(p_author,''),
-          (btrim(coalesce(p_entry_pw,'')) <> ''), coalesce((p_board->>'sort_order')::int, 0))
+          (btrim(coalesce(p_entry_pw,'')) <> ''),
+          nullif(p_board->>'folder_id','')::uuid, coalesce((p_board->>'sort_order')::int, 0))
   returning id into v_id;
   insert into public.board_secrets (board_id, entry_hash, admin_hash)
   values (v_id,
@@ -267,3 +268,62 @@ end; $$;
 grant execute on function public.list_pending_users(text)      to anon, authenticated;
 grant execute on function public.approve_user(text,uuid)       to anon, authenticated;
 grant execute on function public.reject_user(text,uuid)        to anon, authenticated;
+
+-- ── 폴더 (#4) ──
+create table if not exists public.folders (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  owner      text not null default '',     -- 비공개 폴더 소유자 이름(공개면 '')
+  is_private boolean not null default false,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now()
+);
+alter table public.folders enable row level security;
+drop policy if exists folders_select_anon on public.folders;
+create policy folders_select_anon on public.folders for select using (true);
+
+-- 게시글이 어느 폴더에 속하는지
+alter table public.boards add column if not exists folder_id uuid references public.folders(id) on delete set null;
+
+-- 기본 공개 폴더 + 기존 게시글을 그 폴더로
+insert into public.folders (name, is_private, sort_order)
+select '기본', false, 0 where not exists (select 1 from public.folders where name = '기본' and is_private = false);
+update public.boards set folder_id = (select id from public.folders where name = '기본' and is_private = false limit 1)
+where folder_id is null;
+
+-- 폴더 생성 (로그인 사용자). 비공개면 소유자=본인
+create or replace function public.create_folder(p_token text, p_name text, p_is_private boolean)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare v_name text; v_id uuid;
+begin
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  if btrim(coalesce(p_name,'')) = '' then raise exception '폴더 이름을 입력하세요.'; end if;
+  insert into public.folders (name, owner, is_private)
+  values (btrim(p_name), case when p_is_private then v_name else '' end, coalesce(p_is_private, false))
+  returning id into v_id;
+  return v_id;
+end; $$;
+
+-- 폴더 삭제 (비공개=소유자만, 공개=사이트관리자만, 게시글 없을 때만)
+create or replace function public.delete_folder(p_token text, p_folder_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_name text; v_admin boolean; v_owner text; v_priv boolean;
+begin
+  select u.name, u.is_site_admin into v_name, v_admin
+  from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  if exists (select 1 from public.boards where folder_id = p_folder_id) then
+    raise exception '폴더 안 게시글을 먼저 옮기거나 삭제하세요.';
+  end if;
+  select owner, is_private into v_owner, v_priv from public.folders where id = p_folder_id;
+  if v_priv then
+    if v_owner <> v_name then raise exception '본인 폴더만 삭제할 수 있습니다.'; end if;
+  else
+    if not coalesce(v_admin, false) then raise exception '공개 폴더는 사이트 관리자만 삭제할 수 있습니다.'; end if;
+  end if;
+  delete from public.folders where id = p_folder_id;
+end; $$;
+
+grant execute on function public.create_folder(text,text,boolean) to anon, authenticated;
+grant execute on function public.delete_folder(text,uuid)         to anon, authenticated;

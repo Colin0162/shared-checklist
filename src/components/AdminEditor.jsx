@@ -6,8 +6,8 @@ let seq = 0
 const newKey = () => 'k-' + ++seq
 
 // 관리자 게시글 빌더 (생성/편집).
-// props: author, adminPw, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
-function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
+// props: author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
+function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
   const isNew = !board
 
   const [title, setTitle] = useState(board?.title ?? '')
@@ -112,6 +112,7 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
         title: title.trim(),
         mode,
         categories: categoryList,
+        folder_id: folderId || '', // 생성 시 이 폴더에 소속(수정 땐 서버가 무시)
         sort_order: isNew ? nextSortOrder : board.sort_order ?? 0,
       }
       if (isNew) {
