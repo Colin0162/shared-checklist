@@ -115,11 +115,12 @@ returns uuid language plpgsql security definer set search_path = public, extensi
 declare v_id uuid;
 begin
   if btrim(coalesce(p_admin_pw,'')) = '' then raise exception '관리자 비밀번호를 설정하세요.'; end if;
-  insert into public.boards (title, mode, categories, created_by, has_entry_password, folder_id, sort_order)
+  insert into public.boards (title, mode, categories, created_by, has_entry_password, folder_id, event_date, sort_order)
   values (coalesce(p_board->>'title',''), coalesce(p_board->>'mode','check'),
           coalesce(p_board->'categories','[]'::jsonb), coalesce(p_author,''),
           (btrim(coalesce(p_entry_pw,'')) <> ''),
-          nullif(p_board->>'folder_id','')::uuid, coalesce((p_board->>'sort_order')::int, 0))
+          nullif(p_board->>'folder_id','')::uuid, nullif(p_board->>'event_date','')::date,
+          coalesce((p_board->>'sort_order')::int, 0))
   returning id into v_id;
   insert into public.board_secrets (board_id, entry_hash, admin_hash)
   values (v_id,
@@ -139,7 +140,8 @@ begin
   update public.boards set
     title = coalesce(p_board->>'title', title),
     mode = coalesce(p_board->>'mode', mode),
-    categories = coalesce(p_board->'categories', '[]'::jsonb)
+    categories = coalesce(p_board->'categories', '[]'::jsonb),
+    event_date = nullif(p_board->>'event_date', '')::date
   where id = p_board_id;
 
   v_keep := coalesce((select array_agg((e->>'id')::uuid)
@@ -371,8 +373,8 @@ create table if not exists public.templates (
   created_at timestamptz not null default now()
 );
 alter table public.templates enable row level security;
+-- 템플릿은 '본인 것만'(개인용). anon 직접 SELECT 차단 → list_templates RPC로만 조회.
 drop policy if exists templates_select_anon on public.templates;
-create policy templates_select_anon on public.templates for select using (true);
 
 create or replace function public.save_template(p_token text, p_name text, p_mode text, p_categories jsonb, p_items jsonb)
 returns uuid language plpgsql security definer set search_path = public as $$
@@ -402,5 +404,18 @@ begin
   delete from public.templates where id = p_id;
 end; $$;
 
+-- 본인 템플릿만 반환
+create or replace function public.list_templates(p_token text)
+returns table(id uuid, name text, mode text, categories jsonb, items jsonb)
+language plpgsql security definer set search_path = public as $$
+declare v_name text;
+begin
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_name is null then return; end if;
+  return query select t.id, t.name, t.mode, t.categories, t.items
+    from public.templates t where t.owner = v_name order by t.created_at;
+end; $$;
+
 grant execute on function public.save_template(text,text,text,jsonb,jsonb) to anon, authenticated;
 grant execute on function public.delete_template(text,uuid)                to anon, authenticated;
+grant execute on function public.list_templates(text)                      to anon, authenticated;

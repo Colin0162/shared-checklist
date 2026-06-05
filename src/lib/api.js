@@ -119,11 +119,9 @@ export async function deleteFolder(token, folderId) {
 }
 
 // ── 템플릿 (#1) ──
-export async function getTemplates() {
-  const { data, error } = await supabase
-    .from('templates')
-    .select('id, name, mode, categories, items, owner')
-    .order('created_at')
+export async function getTemplates(token) {
+  // 본인 템플릿만 (개인용)
+  const { data, error } = await supabase.rpc('list_templates', { p_token: token })
   if (error) throw error
   return data
 }

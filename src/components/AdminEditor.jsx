@@ -12,6 +12,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
 
   const [title, setTitle] = useState(board?.title ?? '')
   const [mode, setMode] = useState(board?.mode ?? 'check')
+  const [eventDate, setEventDate] = useState(board?.event_date ?? '')
 
   // 새 게시글일 때만: 편집 비밀번호 + 입장 설정
   const [newAdminPw, setNewAdminPw] = useState('')
@@ -47,7 +48,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
 
   useEffect(() => {
     if (!token) return
-    getTemplates()
+    getTemplates(token)
       .then(setTemplates)
       .catch(() => {})
   }, [token])
@@ -87,7 +88,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           assignee: r.assignee || '',
         }))
       await saveTemplate(token, tplName.trim(), mode, categoryList, itemsStruct)
-      setTemplates(await getTemplates())
+      setTemplates(await getTemplates(token))
       setShowSaveTpl(false)
       setTplName('')
     } catch (e) {
@@ -168,6 +169,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         mode,
         categories: categoryList,
         folder_id: folderId || '', // 생성 시 이 폴더에 소속(수정 땐 서버가 무시)
+        event_date: eventDate || '', // 행사일(D-day). 빈 값이면 없음
         sort_order: isNew ? nextSortOrder : board.sort_order ?? 0,
       }
       if (isNew) {
@@ -210,6 +212,16 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="제목"
+        />
+      </label>
+
+      <label className="field">
+        <span className="field-label">행사일 (D-day 표시, 선택)</span>
+        <input
+          className="text-input"
+          type="date"
+          value={eventDate || ''}
+          onChange={(e) => setEventDate(e.target.value)}
         />
       </label>
 

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Item from './Item'
+import { ddayLabel } from '../lib/constants'
 
 const isDone = (it, mode) => (mode === 'check' ? it.status === 'done' : Boolean(it.status))
 
@@ -58,6 +59,7 @@ function Checklist({
       <div className="checklist-head">
         <button className="back-btn" onClick={onBack}>← 목록</button>
         <h2 className="board-heading">{board.title}</h2>
+        {board.event_date && <span className="dday">{ddayLabel(board.event_date)}</span>}
         <div className="head-actions">
           {adminMode ? (
             <>
