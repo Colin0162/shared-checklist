@@ -22,12 +22,6 @@
   margin: 2px 0 10px;
   letter-spacing: -0.3px;
 }
-.app-header h1::before {
-  content: '✓';
-  color: var(--accent);
-  font-weight: 900;
-  margin-right: 5px;
-}
 .user-bar {
   display: flex;
   align-items: center;
