@@ -17,7 +17,13 @@ function BoardList({ boards, onOpen, siteAdmin, onDelete }) {
               {b.title}
             </span>
             <span className="board-meta">
-              {b.mode === 'check' ? '체크리스트' : b.mode === 'rate' ? '평가 (상·중·하)' : '할 일 리스트'}
+              {b.mode === 'check'
+                ? '체크리스트'
+                : b.mode === 'rate'
+                  ? '평가 (상·중·하)'
+                  : b.mode === 'table'
+                    ? '일정표 / 표'
+                    : '할 일 리스트'}
               {b.created_by && ` · 작성자 ${b.created_by}`}
               {b.event_date && <span className="dday"> {ddayLabel(b.event_date)}</span>}
             </span>

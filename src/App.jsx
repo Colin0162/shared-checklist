@@ -27,6 +27,7 @@ import Login from './components/Login'
 import PasswordPrompt from './components/PasswordPrompt'
 import Clock from './components/Clock'
 import PendingUsers from './components/PendingUsers'
+import Guide from './components/Guide'
 
 function applyItemChange(prev, payload) {
   if (payload.eventType === 'INSERT') {
@@ -67,6 +68,7 @@ function App() {
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
   const [showPending, setShowPending] = useState(false)
+  const [showGuide, setShowGuide] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
@@ -299,6 +301,15 @@ function App() {
     )
   }
 
+  // 사용 가이드 화면 (헤더 없이 가이드만, 자체 '← 목록' 버튼으로 닫음)
+  if (showGuide) {
+    return (
+      <div className="app">
+        <Guide onBack={() => setShowGuide(false)} />
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -309,6 +320,7 @@ function App() {
               <span className="user-name">
                 {user.name}님{user.is_site_admin ? ' (사이트 관리자)' : ''}
               </span>
+              <button className="btn btn-small" onClick={() => setShowGuide(true)}>사용 가이드</button>
               <button className="btn btn-small" onClick={logout}>로그아웃</button>
             </div>
             <Clock />
