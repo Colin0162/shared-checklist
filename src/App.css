@@ -339,9 +339,12 @@
 }
 .progress-fill {
   height: 100%;
+  width: 100%;
   background: var(--done);
-  border-radius: 999px;
-  transition: width 0.3s ease;
+  transform-origin: left center;
+  /* width 대신 transform으로 애니메이션 → GPU 가속, 버벅임 없음 */
+  transition: transform 0.3s ease;
+  will-change: transform;
 }
 .progress-text {
   display: block;
@@ -447,7 +450,7 @@
 }
 .item-label {
   font-size: 16px;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 .item-qty {
   font-size: 13px;

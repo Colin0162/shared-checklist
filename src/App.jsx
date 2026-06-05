@@ -2,7 +2,7 @@
 //   로그인 → 폴더 목록 → (폴더 안) 게시글 목록 → 게시글(체크리스트) → 편집
 //   각 화면 조각은 src/components/* 에 있음. 어떤 파일이 어느 화면인지,
 //   무엇을 바꾸면 어디가 바뀌는지는 → 프로젝트 루트의 EDITING_GUIDE.md 참고.
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 import { supabase } from './lib/supabase'
 import {
@@ -218,25 +218,29 @@ function App() {
     }
   }
 
-  async function handleSetStatus(id, status) {
-    const checkedBy = status ? user?.name || '' : ''
-    setItems((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, status, checked_by: checkedBy } : it)),
-    )
-    try {
-      await setItemStatus(id, status, checkedBy)
-    } catch (e) {
-      setError(e.message)
-    }
-  }
-  async function handleSetNote(id, note) {
+  // useCallback: 함수 신원 고정 → memo(Item)이 바뀐 항목만 다시 그림(체크 시 부드러움)
+  const handleSetStatus = useCallback(
+    async (id, status) => {
+      const checkedBy = status ? user?.name || '' : ''
+      setItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, status, checked_by: checkedBy } : it)),
+      )
+      try {
+        await setItemStatus(id, status, checkedBy)
+      } catch (e) {
+        setError(e.message)
+      }
+    },
+    [user],
+  )
+  const handleSetNote = useCallback(async (id, note) => {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note } : it)))
     try {
       await setItemNote(id, note)
     } catch (e) {
       setError(e.message)
     }
-  }
+  }, [])
   function openNew() {
     setEditTarget(null)
     setEditing(true)

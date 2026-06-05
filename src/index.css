@@ -33,6 +33,11 @@
 body {
   margin: 0;
   background: var(--bg);
+  font-size: 16px;
+  line-height: 1.55;
+  /* 한글은 단어 단위로 줄바꿈(어색하게 글자 중간 안 끊김), 긴 영문/URL은 강제 줄바꿈 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 /* 모바일 우선: 가운데 좁은 칼럼 */

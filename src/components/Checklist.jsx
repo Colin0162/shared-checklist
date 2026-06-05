@@ -83,7 +83,7 @@ function Checklist({
         {hasProgress && (
           <div className="progress">
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${percent}%` }} />
+              <div className="progress-fill" style={{ transform: `scaleX(${percent / 100})` }} />
             </div>
             <span className="progress-text">
               {doneLabel} {doneCount} / {total} · {percent}%

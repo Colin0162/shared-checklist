@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { RATINGS } from '../lib/constants'
 
 // 텍스트 안의 URL을 클릭 가능한 링크로
@@ -102,4 +102,5 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
   )
 }
 
-export default Item
+// memo: item/콜백이 그대로면 다시 그리지 않음 → 체크 시 바뀐 항목만 갱신(부드러움)
+export default memo(Item)
