@@ -8,6 +8,14 @@
   text-align: center;
   margin-bottom: 14px;
 }
+/* 본당 배너 (public/parish-header.png) — 파일 없으면 자동 숨김 */
+.parish-banner {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 2px auto 8px;
+}
 .app-header h1 {
   font-size: 20px;
   font-weight: 800;

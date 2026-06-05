@@ -298,7 +298,15 @@ function App() {
     return (
       <div className="app">
         <header className="app-header">
-          <h1>청년회 체크리스트</h1>
+          <img
+          className="parish-banner"
+          src="/parish-header.png"
+          alt="천주교 마산교구 문산본당"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+        />
+        <h1>청년회 체크리스트</h1>
         </header>
         <Login onLogin={handleLogin} />
       </div>
@@ -317,6 +325,14 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
+        <img
+          className="parish-banner"
+          src="/parish-header.png"
+          alt="천주교 마산교구 문산본당"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+        />
         <h1>청년회 체크리스트</h1>
         {user && (
           <>
