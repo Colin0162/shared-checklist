@@ -136,3 +136,20 @@ export async function rejectUser(token, userId) {
   const { error } = await supabase.rpc('reject_user', { p_token: token, p_user_id: userId })
   if (error) throw error
 }
+export async function listAllUsers(token) {
+  const { data, error } = await supabase.rpc('list_all_users', { p_token: token })
+  if (error) throw error
+  return data
+}
+export async function deleteUser(token, userId) {
+  const { error } = await supabase.rpc('delete_user', { p_token: token, p_user_id: userId })
+  if (error) throw error
+}
+export async function adminResetPassword(token, userId, newPw) {
+  const { error } = await supabase.rpc('admin_reset_password', {
+    p_token: token,
+    p_user_id: userId,
+    p_new_pw: newPw,
+  })
+  if (error) throw error
+}

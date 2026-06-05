@@ -377,7 +377,7 @@ function App() {
         <>
           {user.is_site_admin && (
             <div className="list-head">
-              <button className="btn" onClick={() => setShowPending(true)}>가입 신청</button>
+              <button className="btn" onClick={() => setShowPending(true)}>계정 관리</button>
             </div>
           )}
           <FolderList

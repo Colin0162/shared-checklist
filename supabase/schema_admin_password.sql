@@ -31,9 +31,10 @@ create table if not exists public.sessions (
 );
 alter table public.sessions enable row level security;  -- anon 차단
 
--- 가입 승인제: status(pending/approved). 기존 가입정보 전부 삭제(요청).
+-- 가입 승인제: status(pending/approved).
+-- ※ 주의: 예전엔 여기서 'delete from users'로 전체 삭제했었는데, 재RUN마다 계정이
+--   지워지는 문제가 있어 제거함. 계정 정리는 앱의 '계정 관리' 화면에서 한다.
 alter table public.users add column if not exists status text not null default 'pending';
-delete from public.users;  -- 모든 사용자 삭제(sessions cascade). anrhks456 재가입 시 자동 관리자+승인.
 
 -- 비밀번호 해시 보관 (anon 직접 접근 불가)
 create table if not exists public.board_secrets (
@@ -268,6 +269,37 @@ end; $$;
 grant execute on function public.list_pending_users(text)      to anon, authenticated;
 grant execute on function public.approve_user(text,uuid)       to anon, authenticated;
 grant execute on function public.reject_user(text,uuid)        to anon, authenticated;
+
+-- ── 계정 관리 (사이트 관리자): 전체 목록 / 삭제 / 비번 재설정 ──
+create or replace function public.list_all_users(p_token text)
+returns table(id uuid, name text, status text, is_site_admin boolean)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_site_admin(p_token) then raise exception '사이트 관리자만 가능합니다.'; end if;
+  return query select u.id, u.name, u.status, u.is_site_admin from public.users u order by u.created_at;
+end; $$;
+
+create or replace function public.delete_user(p_token text, p_user_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_site_admin(p_token) then raise exception '사이트 관리자만 가능합니다.'; end if;
+  if exists (select 1 from public.users where id = p_user_id and is_site_admin) then
+    raise exception '관리자 계정은 삭제할 수 없습니다.';
+  end if;
+  delete from public.users where id = p_user_id;
+end; $$;
+
+create or replace function public.admin_reset_password(p_token text, p_user_id uuid, p_new_pw text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if not _is_site_admin(p_token) then raise exception '사이트 관리자만 가능합니다.'; end if;
+  if btrim(coalesce(p_new_pw,'')) = '' then raise exception '새 비밀번호를 입력하세요.'; end if;
+  update public.users set pin_hash = crypt(p_new_pw, gen_salt('bf')) where id = p_user_id;
+end; $$;
+
+grant execute on function public.list_all_users(text)              to anon, authenticated;
+grant execute on function public.delete_user(text,uuid)            to anon, authenticated;
+grant execute on function public.admin_reset_password(text,uuid,text) to anon, authenticated;
 
 -- ── 폴더 (#4) ──
 create table if not exists public.folders (
