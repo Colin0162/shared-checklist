@@ -45,6 +45,7 @@ function Checklist({
   const mode = board.mode
   const isTodo = mode === 'todo'
   const isTable = mode === 'table'
+  const hasProgress = mode === 'check' || mode === 'rate'
   const assignees = [...new Set(items.map((it) => it.assignee).filter(Boolean))]
 
   const total = items.length
@@ -58,94 +59,97 @@ function Checklist({
 
   return (
     <section className="checklist">
-      <div className="checklist-head">
-        <button className="back-btn" onClick={onBack}>← 목록</button>
-        <h2 className="board-heading">{board.title}</h2>
-        {board.event_date && <span className="dday">{ddayLabel(board.event_date)}</span>}
-        <div className="head-actions">
-          {adminMode ? (
-            <>
-              <button className="btn" onClick={onEdit}>편집</button>
-              {(mode === 'check' || mode === 'rate') && (
-                <button className="btn" onClick={onReset}>초기화</button>
-              )}
-              <button className="btn btn-small" onClick={onExitAdmin}>관리자 해제</button>
-            </>
-          ) : (
-            <button className="btn" onClick={onEnterAdmin}>관리자 모드</button>
-          )}
+      {/* 스크롤해도 고정되는 상단(제목 + 진행률) */}
+      <div className="board-top">
+        <div className="checklist-head">
+          <button className="back-btn" onClick={onBack}>←</button>
+          <h2 className="board-heading">{board.title}</h2>
+          {board.event_date && <span className="dday">{ddayLabel(board.event_date)}</span>}
+          <div className="head-actions">
+            {adminMode ? (
+              <>
+                <button className="btn btn-small" onClick={onEdit}>편집</button>
+                {hasProgress && (
+                  <button className="btn btn-small" onClick={onReset}>초기화</button>
+                )}
+                <button className="btn btn-small" onClick={onExitAdmin}>해제</button>
+              </>
+            ) : (
+              <button className="btn btn-small" onClick={onEnterAdmin}>관리자 모드</button>
+            )}
+          </div>
         </div>
+
+        {hasProgress && (
+          <div className="progress">
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${percent}%` }} />
+            </div>
+            <span className="progress-text">
+              {doneLabel} {doneCount} / {total} · {percent}%
+            </span>
+          </div>
+        )}
       </div>
 
-      {board.created_by && <p className="board-author">작성자: {board.created_by}</p>}
+      {board.created_by && <p className="board-author">작성자 {board.created_by}</p>}
 
       {isTable ? (
         <TableView data={board.table_data} />
       ) : (
         <>
-      {!isTodo && (
-        <>
-          <div className="progress">
-            <span className="progress-text">
-              {doneLabel} {doneCount} / {total} ({percent}%)
-            </span>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${percent}%` }} />
-            </div>
-          </div>
-
-          <div className="toolbar">
-            <button
-              className={'btn' + (unfinishedOnly ? ' btn-primary' : '')}
-              onClick={() => setUnfinishedOnly((v) => !v)}
-            >
-              {unfinishedOnly ? '전체 보기' : '미완료만 보기'}
-            </button>
-            {assignees.length > 0 && (
-              <select
-                className="text-input filter-select"
-                value={assigneeFilter}
-                onChange={(e) => setAssigneeFilter(e.target.value)}
+          {!isTodo && (
+            <div className="toolbar">
+              <button
+                className={'btn' + (unfinishedOnly ? ' btn-primary' : '')}
+                onClick={() => setUnfinishedOnly((v) => !v)}
               >
-                <option value="">담당자 전체</option>
-                {assignees.map((a) => (
-                  <option key={a} value={a}>
-                    담당: {a}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        </>
-      )}
+                {unfinishedOnly ? '전체 보기' : '미완료만 보기'}
+              </button>
+              {assignees.length > 0 && (
+                <select
+                  className="text-input filter-select"
+                  value={assigneeFilter}
+                  onChange={(e) => setAssigneeFilter(e.target.value)}
+                >
+                  <option value="">담당자 전체</option>
+                  {assignees.map((a) => (
+                    <option key={a} value={a}>
+                      담당: {a}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
-      {groups.map((group) => {
-        const gTotal = group.items.length
-        const gDone = group.items.filter((it) => isDone(it, mode)).length
-        const shown = group.items.filter(visible)
-        if (unfinishedOnly && shown.length === 0) return null
-        return (
-          <div className="group" key={group.name || '_'}>
-            {group.name && (
-              <div className="group-head">
-                <h3 className="group-title">{group.name}</h3>
-                {!isTodo && <span className="group-progress">{gDone}/{gTotal}</span>}
+          {groups.map((group) => {
+            const gTotal = group.items.length
+            const gDone = group.items.filter((it) => isDone(it, mode)).length
+            const shown = group.items.filter(visible)
+            if (unfinishedOnly && shown.length === 0) return null
+            return (
+              <div className="group" key={group.name || '_'}>
+                {group.name && (
+                  <div className="group-head">
+                    <h3 className="group-title">{group.name}</h3>
+                    {hasProgress && <span className="group-progress">{gDone}/{gTotal}</span>}
+                  </div>
+                )}
+                <ul className="item-list">
+                  {shown.map((item) => (
+                    <Item
+                      key={item.id}
+                      item={item}
+                      mode={mode}
+                      onSetStatus={onSetStatus}
+                      onSetNote={onSetNote}
+                    />
+                  ))}
+                </ul>
               </div>
-            )}
-            <ul className="item-list">
-              {shown.map((item) => (
-                <Item
-                  key={item.id}
-                  item={item}
-                  mode={mode}
-                  onSetStatus={onSetStatus}
-                  onSetNote={onSetNote}
-                />
-              ))}
-            </ul>
-          </div>
-        )
-      })}
+            )
+          })}
         </>
       )}
     </section>

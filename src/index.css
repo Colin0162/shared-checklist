@@ -1,23 +1,33 @@
 /* ───────────────────────────────────────────────────────────
-   디자인 색상 모음 — 여기만 바꿔도 앱 전체 톤이 바뀝니다.
+   디자인 색상·기본값 모음 — 여기만 바꿔도 앱 전체 톤이 바뀝니다.
    (자세한 수정법은 프로젝트 루트의 EDITING_GUIDE.md 참고)
    ─────────────────────────────────────────────────────────── */
 :root {
-  --bg: #f4f5f7; /* 화면 배경색 */
+  --bg: #f2f4f7; /* 화면 배경 */
   --card: #ffffff; /* 카드(게시글/항목) 배경 */
-  --text: #1f2328; /* 기본 글씨색 */
+  --text: #1f2937; /* 기본 글씨 */
   --muted: #6b7280; /* 흐린 글씨(설명·메타) */
-  --border: #e5e7eb; /* 테두리/구분선 */
-  --accent: #2f6df6; /* 강조색(버튼·링크·선택). 한 번에 톤 바꾸려면 여기 */
+  --border: #e6e8ec; /* 테두리/구분선 */
+  --accent: #2563eb; /* 강조색(버튼·링크·선택) */
+  --accent-weak: #eaf1ff; /* 강조 연한 배경 */
   --done: #16a34a; /* 완료/체크 초록 */
+  --done-weak: #e7f6ec; /* 완료 연한 배경 */
+  --danger: #dc2626; /* 삭제/경고 */
+
+  --radius: 12px;
+  --radius-sm: 9px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.07);
+  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.14);
 
   font-family: system-ui, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', sans-serif;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -25,10 +35,10 @@ body {
   background: var(--bg);
 }
 
-/* 모바일에서 주로 보므로 가운데 좁은 칼럼으로 */
+/* 모바일 우선: 가운데 좁은 칼럼 */
 #root {
-  max-width: 640px;
+  max-width: 680px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 14px 14px 40px;
   min-height: 100svh;
 }
