@@ -261,12 +261,22 @@ function AdminEditor({ author, adminPw, board, originalItems, nextSortOrder, onS
                   <option value={row.group_name}>{row.group_name}</option>
                 )}
               </select>
-              <input
-                className="text-input row-label"
-                value={row.label}
-                onChange={(e) => updateRow(row.key, 'label', e.target.value)}
-                placeholder={mode === 'todo' ? '내용 (링크 붙여넣기 가능)' : '항목명'}
-              />
+              {mode === 'todo' ? (
+                <textarea
+                  className="text-input row-label"
+                  rows={2}
+                  value={row.label}
+                  onChange={(e) => updateRow(row.key, 'label', e.target.value)}
+                  placeholder="내용 (링크/줄바꿈 가능)"
+                />
+              ) : (
+                <input
+                  className="text-input row-label"
+                  value={row.label}
+                  onChange={(e) => updateRow(row.key, 'label', e.target.value)}
+                  placeholder="항목명"
+                />
+              )}
               {mode === 'check' && (
                 <input
                   className="text-input row-qty"
