@@ -321,6 +321,7 @@ function App() {
 
       {!loading && editing && (
         <AdminEditor
+          token={user.token}
           author={user.name}
           adminPw={adminPw}
           folderId={openFolder?.id || ''}

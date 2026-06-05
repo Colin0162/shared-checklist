@@ -118,6 +118,31 @@ export async function deleteFolder(token, folderId) {
   if (error) throw error
 }
 
+// ── 템플릿 (#1) ──
+export async function getTemplates() {
+  const { data, error } = await supabase
+    .from('templates')
+    .select('id, name, mode, categories, items, owner')
+    .order('created_at')
+  if (error) throw error
+  return data
+}
+export async function saveTemplate(token, name, mode, categories, items) {
+  const { data, error } = await supabase.rpc('save_template', {
+    p_token: token,
+    p_name: name,
+    p_mode: mode,
+    p_categories: categories,
+    p_items: items,
+  })
+  if (error) throw error
+  return data
+}
+export async function deleteTemplate(token, id) {
+  const { error } = await supabase.rpc('delete_template', { p_token: token, p_id: id })
+  if (error) throw error
+}
+
 // ── 사이트 관리자 (예약 계정으로 로그인한 경우) ──
 export async function siteDeleteBoard(token, boardId) {
   const { error } = await supabase.rpc('site_delete_board', { p_token: token, p_board_id: boardId })

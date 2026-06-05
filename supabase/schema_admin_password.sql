@@ -359,3 +359,48 @@ end; $$;
 
 grant execute on function public.create_folder(text,text,boolean) to anon, authenticated;
 grant execute on function public.delete_folder(text,uuid)         to anon, authenticated;
+
+-- ── 템플릿 (#1): 체크리스트 구성을 저장해두고 새 게시글에 불러오기 ──
+create table if not exists public.templates (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  mode       text not null default 'check',
+  categories jsonb not null default '[]'::jsonb,
+  items      jsonb not null default '[]'::jsonb,   -- [{group_name,label,quantity,show_note,assignee}]
+  owner      text not null default '',
+  created_at timestamptz not null default now()
+);
+alter table public.templates enable row level security;
+drop policy if exists templates_select_anon on public.templates;
+create policy templates_select_anon on public.templates for select using (true);
+
+create or replace function public.save_template(p_token text, p_name text, p_mode text, p_categories jsonb, p_items jsonb)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare v_name text; v_id uuid;
+begin
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  if btrim(coalesce(p_name,'')) = '' then raise exception '템플릿 이름을 입력하세요.'; end if;
+  insert into public.templates (name, mode, categories, items, owner)
+  values (btrim(p_name), coalesce(p_mode,'check'), coalesce(p_categories,'[]'::jsonb),
+          coalesce(p_items,'[]'::jsonb), v_name)
+  returning id into v_id;
+  return v_id;
+end; $$;
+
+create or replace function public.delete_template(p_token text, p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_name text; v_admin boolean; v_owner text;
+begin
+  select u.name, u.is_site_admin into v_name, v_admin
+  from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  select owner into v_owner from public.templates where id = p_id;
+  if v_owner <> v_name and not coalesce(v_admin, false) then
+    raise exception '본인 템플릿만 삭제할 수 있습니다.';
+  end if;
+  delete from public.templates where id = p_id;
+end; $$;
+
+grant execute on function public.save_template(text,text,text,jsonb,jsonb) to anon, authenticated;
+grant execute on function public.delete_template(text,uuid)                to anon, authenticated;

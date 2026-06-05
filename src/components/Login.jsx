@@ -9,6 +9,7 @@ function Login({ onLogin }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
+  const [showPw, setShowPw] = useState(false)
 
   async function submit(kind) {
     if (!name.trim() || !pin.trim()) {
@@ -48,14 +49,24 @@ function Login({ onLogin }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
-      <input
-        className="text-input"
-        type="password"
-        placeholder="비밀번호"
-        value={pin}
-        onChange={(e) => setPin(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && submit('login')}
-      />
+      <div className="pw-field">
+        <input
+          className="text-input"
+          type={showPw ? 'text' : 'password'}
+          placeholder="비밀번호"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && submit('login')}
+        />
+        <button
+          type="button"
+          className="pw-eye"
+          onClick={() => setShowPw((v) => !v)}
+          title={showPw ? '숨기기' : '보기'}
+        >
+          {showPw ? '🙈' : '👁'}
+        </button>
+      </div>
       {err && <p className="error">오류: {err}</p>}
       {info && <p className="info-box">{info}</p>}
       <div className="login-actions">

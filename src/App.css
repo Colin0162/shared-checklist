@@ -41,6 +41,24 @@
   font-size: 18px;
   margin: 0 0 8px;
 }
+.pw-field {
+  position: relative;
+}
+.pw-field .text-input {
+  padding-right: 42px;
+}
+.pw-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  line-height: 1;
+}
 .login-actions {
   display: flex;
   gap: 8px;

@@ -1,13 +1,13 @@
-import { useState } from 'react'
-import { createBoard, updateBoard, deleteBoard } from '../lib/api'
+import { useState, useEffect } from 'react'
+import { createBoard, updateBoard, deleteBoard, getTemplates, saveTemplate } from '../lib/api'
 import ConfirmModal from './ConfirmModal'
 
 let seq = 0
 const newKey = () => 'k-' + ++seq
 
 // 관리자 게시글 빌더 (생성/편집).
-// props: author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
-function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
+// props: token, author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
+function AdminEditor({ token, author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
   const isNew = !board
 
   const [title, setTitle] = useState(board?.title ?? '')
@@ -39,6 +39,61 @@ function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSort
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // 템플릿
+  const [templates, setTemplates] = useState([])
+  const [showSaveTpl, setShowSaveTpl] = useState(false)
+  const [tplName, setTplName] = useState('')
+
+  useEffect(() => {
+    if (!token) return
+    getTemplates()
+      .then(setTemplates)
+      .catch(() => {})
+  }, [token])
+
+  function loadTemplate(id) {
+    const t = templates.find((x) => x.id === id)
+    if (!t) return
+    setMode(t.mode)
+    setCategories((t.categories || []).map((name) => ({ key: newKey(), name })))
+    setRows(
+      (t.items || []).map((it) => ({
+        key: newKey(),
+        group_name: it.group_name || '',
+        label: it.label || '',
+        quantity: it.quantity || '',
+        show_note: it.show_note ?? false,
+        assignee: it.assignee || '',
+      })),
+    )
+  }
+
+  async function saveCurrentAsTemplate() {
+    if (!tplName.trim()) {
+      setErr('템플릿 이름을 입력하세요.')
+      return
+    }
+    setErr('')
+    try {
+      const categoryList = categories.map((c) => c.name.trim()).filter(Boolean)
+      const itemsStruct = rows
+        .filter((r) => r.label.trim())
+        .map((r) => ({
+          group_name: r.group_name || '',
+          label: r.label.trim(),
+          quantity: mode === 'check' ? r.quantity || '' : '',
+          show_note: r.show_note ?? false,
+          assignee: r.assignee || '',
+        }))
+      await saveTemplate(token, tplName.trim(), mode, categoryList, itemsStruct)
+      setTemplates(await getTemplates())
+      setShowSaveTpl(false)
+      setTplName('')
+    } catch (e) {
+      setErr(e.message)
+    }
+  }
 
   // ── 카테고리 조작 ──
   function addCategory() {
@@ -175,6 +230,24 @@ function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSort
           </label>
         </div>
       </div>
+
+      {isNew && templates.length > 0 && (
+        <div className="field">
+          <span className="field-label">템플릿 불러오기</span>
+          <select
+            className="text-input"
+            defaultValue=""
+            onChange={(e) => e.target.value && loadTemplate(e.target.value)}
+          >
+            <option value="">— 선택 —</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {isNew && (
         <>
@@ -313,6 +386,25 @@ function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSort
           ))}
         </ul>
         <button className="btn" onClick={addRow}>+ 항목 추가</button>
+      </div>
+
+      <div className="field">
+        {showSaveTpl ? (
+          <div className="folder-new">
+            <input
+              className="text-input"
+              placeholder="템플릿 이름"
+              value={tplName}
+              onChange={(e) => setTplName(e.target.value)}
+            />
+            <button className="btn btn-primary" onClick={saveCurrentAsTemplate}>저장</button>
+            <button className="btn" onClick={() => setShowSaveTpl(false)}>취소</button>
+          </div>
+        ) : (
+          <button className="btn" onClick={() => setShowSaveTpl(true)}>
+            현재 구성을 템플릿으로 저장
+          </button>
+        )}
       </div>
 
       <div className="editor-foot">
