@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react'
-import { createBoard, updateBoard, deleteBoard, getTemplates, saveTemplate } from '../lib/api'
+import {
+  createBoard,
+  updateBoard,
+  deleteBoard,
+  getTemplates,
+  saveTemplate,
+  deleteTemplate,
+} from '../lib/api'
 import ConfirmModal from './ConfirmModal'
 
 let seq = 0
@@ -45,6 +52,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
   const [templates, setTemplates] = useState([])
   const [showSaveTpl, setShowSaveTpl] = useState(false)
   const [tplName, setTplName] = useState('')
+  const [selectedTpl, setSelectedTpl] = useState('')
 
   useEffect(() => {
     if (!token) return
@@ -68,6 +76,18 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         assignee: it.assignee || '',
       })),
     )
+  }
+
+  async function deleteSelectedTpl() {
+    if (!selectedTpl) return
+    setErr('')
+    try {
+      await deleteTemplate(token, selectedTpl)
+      setTemplates(await getTemplates(token))
+      setSelectedTpl('')
+    } catch (e) {
+      setErr(e.message)
+    }
   }
 
   async function saveCurrentAsTemplate() {
@@ -246,18 +266,26 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
       {isNew && templates.length > 0 && (
         <div className="field">
           <span className="field-label">템플릿 불러오기</span>
-          <select
-            className="text-input"
-            defaultValue=""
-            onChange={(e) => e.target.value && loadTemplate(e.target.value)}
-          >
-            <option value="">— 선택 —</option>
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
+          <div className="folder-new">
+            <select
+              className="text-input"
+              value={selectedTpl}
+              onChange={(e) => {
+                setSelectedTpl(e.target.value)
+                if (e.target.value) loadTemplate(e.target.value)
+              }}
+            >
+              <option value="">— 선택 —</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            {selectedTpl && (
+              <button className="btn btn-danger" onClick={deleteSelectedTpl}>템플릿 삭제</button>
+            )}
+          </div>
         </div>
       )}
 
