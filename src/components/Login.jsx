@@ -77,9 +77,15 @@ function Login({ onLogin }) {
           로그인
         </button>
       </div>
-      <p className="muted login-hint">
-        처음이면 '가입 신청' → 관리자 승인 후 로그인. 비밀번호를 잊으셨다면 강무관(필립보)에게 문의하세요.
-      </p>
+      <div className="login-guide">
+        <p className="guide-h">처음이신가요? — 로그인 / 가입 안내</p>
+        <ul className="guide-list">
+          <li><b>이름(세례명)</b> + <b>비밀번호</b>로 로그인해요. 예: <b>강무관(필립보)</b></li>
+          <li>처음이면 <b>'가입 신청'</b> → <b>관리자 승인</b> 후 로그인할 수 있어요. (승인 문의: 강무관(필립보))</li>
+          <li>비밀번호 칸의 <b>👁</b> 를 누르면 입력한 비밀번호를 볼 수 있어요.</li>
+          <li>비밀번호를 잊으면 강무관(필립보)에게 재설정을 요청하세요.</li>
+        </ul>
+      </div>
     </div>
   )
 }

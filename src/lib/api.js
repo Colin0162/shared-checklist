@@ -125,13 +125,14 @@ export async function getTemplates(token) {
   if (error) throw error
   return data
 }
-export async function saveTemplate(token, name, mode, categories, items) {
+export async function saveTemplate(token, name, mode, categories, items, tableData) {
   const { data, error } = await supabase.rpc('save_template', {
     p_token: token,
     p_name: name,
     p_mode: mode,
     p_categories: categories,
     p_items: items,
+    p_table_data: tableData,
   })
   if (error) throw error
   return data

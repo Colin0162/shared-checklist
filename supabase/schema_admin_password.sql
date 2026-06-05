@@ -378,19 +378,21 @@ create table if not exists public.templates (
   created_at timestamptz not null default now()
 );
 alter table public.templates enable row level security;
+alter table public.templates add column if not exists table_data jsonb not null default '{"columns":[],"rows":[]}'::jsonb;
 -- 템플릿은 '본인 것만'(개인용). anon 직접 SELECT 차단 → list_templates RPC로만 조회.
 drop policy if exists templates_select_anon on public.templates;
 
-create or replace function public.save_template(p_token text, p_name text, p_mode text, p_categories jsonb, p_items jsonb)
+drop function if exists public.save_template(text,text,text,jsonb,jsonb);
+create or replace function public.save_template(p_token text, p_name text, p_mode text, p_categories jsonb, p_items jsonb, p_table_data jsonb)
 returns uuid language plpgsql security definer set search_path = public as $$
 declare v_name text; v_id uuid;
 begin
   select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   if btrim(coalesce(p_name,'')) = '' then raise exception '템플릿 이름을 입력하세요.'; end if;
-  insert into public.templates (name, mode, categories, items, owner)
+  insert into public.templates (name, mode, categories, items, table_data, owner)
   values (btrim(p_name), coalesce(p_mode,'check'), coalesce(p_categories,'[]'::jsonb),
-          coalesce(p_items,'[]'::jsonb), v_name)
+          coalesce(p_items,'[]'::jsonb), coalesce(p_table_data,'{"columns":[],"rows":[]}'::jsonb), v_name)
   returning id into v_id;
   return v_id;
 end; $$;
@@ -410,17 +412,18 @@ begin
 end; $$;
 
 -- 본인 템플릿만 반환
+drop function if exists public.list_templates(text);
 create or replace function public.list_templates(p_token text)
-returns table(id uuid, name text, mode text, categories jsonb, items jsonb)
+returns table(id uuid, name text, mode text, categories jsonb, items jsonb, table_data jsonb)
 language plpgsql security definer set search_path = public as $$
 declare v_name text;
 begin
   select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
   if v_name is null then return; end if;
-  return query select t.id, t.name, t.mode, t.categories, t.items
+  return query select t.id, t.name, t.mode, t.categories, t.items, t.table_data
     from public.templates t where t.owner = v_name order by t.created_at;
 end; $$;
 
-grant execute on function public.save_template(text,text,text,jsonb,jsonb) to anon, authenticated;
+grant execute on function public.save_template(text,text,text,jsonb,jsonb,jsonb) to anon, authenticated;
 grant execute on function public.delete_template(text,uuid)                to anon, authenticated;
 grant execute on function public.list_templates(text)                      to anon, authenticated;

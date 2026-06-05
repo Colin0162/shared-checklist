@@ -22,7 +22,7 @@ function BoardList({ boards, onOpen, siteAdmin, onDelete }) {
                 : b.mode === 'rate'
                   ? '평가 (상·중·하)'
                   : b.mode === 'table'
-                    ? '일정표 / 표'
+                    ? '표'
                     : '할 일 리스트'}
               {b.created_by && ` · 작성자 ${b.created_by}`}
               {b.event_date && <span className="dday"> {ddayLabel(b.event_date)}</span>}

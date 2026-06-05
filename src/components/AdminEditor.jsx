@@ -100,6 +100,9 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         assignee: it.assignee || '',
       })),
     )
+    // 표 형식 템플릿이면 표 내용도 복원
+    setTableColumns(t.table_data?.columns ?? [])
+    setTableRows(t.table_data?.rows ?? [])
   }
 
   async function deleteSelectedTpl() {
@@ -131,7 +134,9 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           show_note: r.show_note ?? false,
           assignee: r.assignee || '',
         }))
-      await saveTemplate(token, tplName.trim(), mode, categoryList, itemsStruct)
+      const tableData =
+        mode === 'table' ? { columns: tableColumns, rows: tableRows } : { columns: [], rows: [] }
+      await saveTemplate(token, tplName.trim(), mode, categoryList, itemsStruct, tableData)
       setTemplates(await getTemplates(token))
       setShowSaveTpl(false)
       setTplName('')
@@ -289,7 +294,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           </label>
           <label>
             <input type="radio" name="mode" checked={mode === 'table'} onChange={() => setMode('table')} />
-            일정표 / 표
+            표
           </label>
         </div>
       </div>
@@ -516,7 +521,6 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         </>
       )}
 
-      {mode !== 'table' && (
       <div className="field">
         {showSaveTpl ? (
           <div className="folder-new">
@@ -535,7 +539,6 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           </button>
         )}
       </div>
-      )}
 
       <div className="editor-foot">
         <div className="editor-foot-left">

@@ -70,6 +70,11 @@
   font-size: 13px;
   margin-top: 4px;
 }
+.login-guide {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
 .item-by {
   font-size: 13px;
   color: var(--done);
