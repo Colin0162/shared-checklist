@@ -621,13 +621,14 @@
 
 /* 일정표 / 표 */
 .table-wrap {
-  overflow-x: auto;
+  overflow-x: auto; /* 화면보다 넓으면 좌우로 스와이프(가로 스크롤) */
+  -webkit-overflow-scrolling: touch;
   margin-bottom: 12px;
-  border-radius: var(--radius);
 }
 .data-table {
   border-collapse: collapse;
-  width: 100%;
+  width: max-content; /* 내용 크기대로 — 폰에서 칸이 안 찌그러짐 */
+  max-width: none;
   background: var(--card);
 }
 .data-table th,
@@ -637,18 +638,15 @@
   text-align: left;
   vertical-align: top;
   font-size: 14px;
+  min-width: 96px; /* 칸이 너무 좁아 글자가 세로로 끊기는 것 방지 */
+  max-width: 280px; /* 너무 넓어지지도 않게(넘으면 줄바꿈) */
+  white-space: pre-wrap; /* 줄바꿈 유지 */
+  word-break: keep-all; /* 한글은 단어 단위로 줄바꿈 */
+  overflow-wrap: break-word;
 }
 .data-table th {
   background: #f4f0e9;
   font-weight: 700;
-  white-space: nowrap;
-}
-.data-table td {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.editor-table th {
-  white-space: normal;
 }
 .editor-table .text-input {
   min-width: 90px;
