@@ -6,6 +6,7 @@ function PasswordPrompt({ title, onSubmit, onCancel }) {
   const [pw, setPw] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showPw, setShowPw] = useState(false)
 
   async function go() {
     if (!pw.trim()) {
@@ -25,15 +26,25 @@ function PasswordPrompt({ title, onSubmit, onCancel }) {
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <p className="modal-msg">{title}</p>
-        <input
-          className="text-input"
-          type="password"
-          value={pw}
-          autoFocus
-          onChange={(e) => setPw(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && go()}
-          placeholder="비밀번호"
-        />
+        <div className="pw-field">
+          <input
+            className="text-input"
+            type={showPw ? 'text' : 'password'}
+            value={pw}
+            autoFocus
+            onChange={(e) => setPw(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && go()}
+            placeholder="비밀번호"
+          />
+          <button
+            type="button"
+            className="pw-eye"
+            onClick={() => setShowPw((v) => !v)}
+            title={showPw ? '숨기기' : '보기'}
+          >
+            {showPw ? '🙈' : '👁'}
+          </button>
+        </div>
         {err && <p className="error" style={{ marginTop: 8 }}>오류: {err}</p>}
         <div className="modal-actions" style={{ marginTop: 12 }}>
           <button className="btn" onClick={onCancel} disabled={busy}>취소</button>

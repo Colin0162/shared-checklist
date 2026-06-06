@@ -1,4 +1,4 @@
-import { useState, memo } from 'react'
+import { useState, memo, useRef, useEffect } from 'react'
 import { RATINGS } from '../lib/constants'
 
 // 텍스트 안의 URL을 클릭 가능한 링크로
@@ -27,6 +27,16 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
   const [noteDraft, setNoteDraft] = useState(item.note ?? '')
   const [focused, setFocused] = useState(false)
   const [syncedNote, setSyncedNote] = useState(item.note ?? '')
+  const taRef = useRef(null)
+
+  // 비고칸을 내용(줄바꿈)만큼 자동으로 키움 → 스크롤 없이 한눈에
+  useEffect(() => {
+    const el = taRef.current
+    if (el) {
+      el.style.height = 'auto'
+      el.style.height = el.scrollHeight + 'px'
+    }
+  }, [noteDraft, item.show_note])
 
   // 동시편집 보호: 입력 중이 아닐 때만 실시간 변경을 반영
   if (!focused && item.note !== syncedNote) {
@@ -49,8 +59,9 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
 
   const note = item.show_note && (
     <textarea
+      ref={taRef}
       className="item-note-input"
-      rows={2}
+      rows={1}
       placeholder="비고 입력… (줄바꿈 가능)"
       value={noteDraft}
       onFocus={() => setFocused(true)}

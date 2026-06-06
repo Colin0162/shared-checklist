@@ -569,7 +569,10 @@
   font-family: inherit;
   color: var(--text);
   background: #faf7f2;
-  resize: vertical;
+  resize: none;
+  overflow: hidden; /* 내용만큼 자동으로 높이가 늘어남(스크롤 X) */
+  min-height: 40px;
+  line-height: 1.5;
 }
 .item-note-input:focus {
   outline: none;
