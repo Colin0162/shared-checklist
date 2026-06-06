@@ -419,7 +419,11 @@ function App() {
             onOpen={(f) => setFolderPath((p) => [...p, f])}
             onNew={doCreateFolder}
             onDelete={(f) => setConfirmDeleteFolder(f)}
-            canDelete={(f) => (f.is_private ? f.owner === user.name : Boolean(user.is_site_admin))}
+            canDelete={(f) =>
+              (f.owner === user.name || Boolean(user.is_site_admin)) &&
+              !folders.some((c) => c.parent_id === f.id) &&
+              !boards.some((b) => b.folder_id === f.id)
+            }
           />
 
           {/* 게시글: 홈(루트)에선 못 만들고 폴더만. 폴더 안에서만 새 게시글 */}

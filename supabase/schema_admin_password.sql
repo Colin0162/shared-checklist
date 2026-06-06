@@ -343,7 +343,7 @@ begin
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   if btrim(coalesce(p_name,'')) = '' then raise exception '폴더 이름을 입력하세요.'; end if;
   insert into public.folders (name, owner, is_private, parent_id)
-  values (btrim(p_name), case when p_is_private then v_name else '' end, coalesce(p_is_private, false), p_parent_id)
+  values (btrim(p_name), v_name, coalesce(p_is_private, false), p_parent_id)
   returning id into v_id;
   return v_id;
 end; $$;
@@ -356,17 +356,17 @@ begin
   select u.name, u.is_site_admin into v_name, v_admin
   from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  -- 비어 있을 때만 삭제 (안의 게시글·하위폴더 먼저 정리)
   if exists (select 1 from public.boards where folder_id = p_folder_id) then
     raise exception '폴더 안 게시글을 먼저 옮기거나 삭제하세요.';
   end if;
   if exists (select 1 from public.folders where parent_id = p_folder_id) then
     raise exception '하위 폴더를 먼저 정리하세요.';
   end if;
-  select owner, is_private into v_owner, v_priv from public.folders where id = p_folder_id;
-  if v_priv then
-    if v_owner <> v_name then raise exception '본인 폴더만 삭제할 수 있습니다.'; end if;
-  else
-    if not coalesce(v_admin, false) then raise exception '공개 폴더는 사이트 관리자만 삭제할 수 있습니다.'; end if;
+  -- 만든 사람 또는 사이트 관리자만 삭제
+  select owner into v_owner from public.folders where id = p_folder_id;
+  if v_owner <> v_name and not coalesce(v_admin, false) then
+    raise exception '본인이 만든 폴더만 삭제할 수 있습니다.';
   end if;
   delete from public.folders where id = p_folder_id;
 end; $$;
