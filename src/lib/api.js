@@ -178,3 +178,12 @@ export async function adminResetPassword(token, userId, newPw) {
   })
   if (error) throw error
 }
+export async function changeMyPassword(token, oldPw, newPw) {
+  const { data, error } = await supabase.rpc('change_my_password', {
+    p_token: token,
+    p_old_pw: oldPw,
+    p_new_pw: newPw,
+  })
+  if (error) throw error
+  return data
+}

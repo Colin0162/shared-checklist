@@ -28,6 +28,7 @@ import PasswordPrompt from './components/PasswordPrompt'
 import Clock from './components/Clock'
 import PendingUsers from './components/PendingUsers'
 import Guide from './components/Guide'
+import ChangePassword from './components/ChangePassword'
 
 function applyItemChange(prev, payload) {
   if (payload.eventType === 'INSERT') {
@@ -69,6 +70,7 @@ function App() {
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
   const [showPending, setShowPending] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
+  const [showChangePw, setShowChangePw] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
@@ -135,6 +137,7 @@ function App() {
     setEditing(false)
     setAdminPw(null)
     setShowPending(false)
+    setShowChangePw(false)
   }
 
   async function reloadBoards() {
@@ -324,6 +327,15 @@ function App() {
     )
   }
 
+  // 비밀번호 변경 화면
+  if (showChangePw) {
+    return (
+      <div className="app">
+        <ChangePassword token={user.token} onBack={() => setShowChangePw(false)} />
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -343,6 +355,7 @@ function App() {
                 {user.name}님{user.is_site_admin ? ' (사이트 관리자)' : ''}
               </span>
               <button className="btn btn-small" onClick={() => setShowGuide(true)}>사용 가이드</button>
+              <button className="btn btn-small" onClick={() => setShowChangePw(true)}>비밀번호 변경</button>
               <button className="btn btn-small" onClick={logout}>로그아웃</button>
             </div>
             <Clock />

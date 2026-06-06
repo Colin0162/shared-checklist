@@ -308,6 +308,24 @@ grant execute on function public.list_all_users(text)              to anon, auth
 grant execute on function public.delete_user(text,uuid)            to anon, authenticated;
 grant execute on function public.admin_reset_password(text,uuid,text) to anon, authenticated;
 
+-- 본인 비밀번호 변경 (현재 비밀번호 확인 후 변경)
+create or replace function public.change_my_password(p_token text, p_old_pw text, p_new_pw text)
+returns json language plpgsql security definer set search_path = public, extensions as $$
+declare v_user public.users;
+begin
+  select u.* into v_user from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_user.id is null then return json_build_object('ok', false, 'error', '로그인이 필요합니다.'); end if;
+  if v_user.pin_hash <> crypt(p_old_pw, v_user.pin_hash) then
+    return json_build_object('ok', false, 'error', '현재 비밀번호가 올바르지 않습니다.');
+  end if;
+  if btrim(coalesce(p_new_pw, '')) = '' then
+    return json_build_object('ok', false, 'error', '새 비밀번호를 입력하세요.');
+  end if;
+  update public.users set pin_hash = crypt(p_new_pw, gen_salt('bf')) where id = v_user.id;
+  return json_build_object('ok', true);
+end; $$;
+grant execute on function public.change_my_password(text,text,text) to anon, authenticated;
+
 -- ── 폴더 (#4) ──
 create table if not exists public.folders (
   id         uuid primary key default gen_random_uuid(),
