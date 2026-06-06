@@ -25,6 +25,8 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
   const [newAdminPw, setNewAdminPw] = useState('')
   const [entryMode, setEntryMode] = useState('public') // 'public' | 'password'
   const [newEntryPw, setNewEntryPw] = useState('')
+  const [showAdminPw, setShowAdminPw] = useState(false)
+  const [showEntryPw, setShowEntryPw] = useState(false)
 
   // 대항목(카테고리): [{ key, name }]
   const [categories, setCategories] = useState(() =>
@@ -329,13 +331,23 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         <>
           <label className="field">
             <span className="field-label">관리자 비밀번호 (게시글을 수정할 때 필요)</span>
-            <input
-              className="text-input"
-              type="password"
-              value={newAdminPw}
-              onChange={(e) => setNewAdminPw(e.target.value)}
-              placeholder="편집 비밀번호"
-            />
+            <div className="pw-field">
+              <input
+                className="text-input"
+                type={showAdminPw ? 'text' : 'password'}
+                value={newAdminPw}
+                onChange={(e) => setNewAdminPw(e.target.value)}
+                placeholder="관리자 비밀번호"
+              />
+              <button
+                type="button"
+                className="pw-eye"
+                onClick={() => setShowAdminPw((v) => !v)}
+                title={showAdminPw ? '숨기기' : '보기'}
+              >
+                {showAdminPw ? '🙈' : '👁'}
+              </button>
+            </div>
           </label>
           <div className="field">
             <span className="field-label">입장 설정</span>
@@ -360,14 +372,23 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
               </label>
             </div>
             {entryMode === 'password' && (
-              <input
-                className="text-input"
-                type="password"
-                style={{ marginTop: 8 }}
-                value={newEntryPw}
-                onChange={(e) => setNewEntryPw(e.target.value)}
-                placeholder="입장 비밀번호"
-              />
+              <div className="pw-field" style={{ marginTop: 8 }}>
+                <input
+                  className="text-input"
+                  type={showEntryPw ? 'text' : 'password'}
+                  value={newEntryPw}
+                  onChange={(e) => setNewEntryPw(e.target.value)}
+                  placeholder="입장 비밀번호"
+                />
+                <button
+                  type="button"
+                  className="pw-eye"
+                  onClick={() => setShowEntryPw((v) => !v)}
+                  title={showEntryPw ? '숨기기' : '보기'}
+                >
+                  {showEntryPw ? '🙈' : '👁'}
+                </button>
+              </div>
             )}
           </div>
         </>
