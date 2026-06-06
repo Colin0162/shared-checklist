@@ -74,6 +74,7 @@ function App() {
 
   const configError = supabase ? '' : 'Supabase 연결 정보가 없습니다 (.env.local 확인).'
   const currentFolder = folderPath.length ? folderPath[folderPath.length - 1] : null
+  const currentBoards = boards.filter((b) => (b.folder_id || null) === (currentFolder?.id || null))
 
   useEffect(() => {
     if (!supabase) return
@@ -421,16 +422,30 @@ function App() {
             canDelete={(f) => (f.is_private ? f.owner === user.name : Boolean(user.is_site_admin))}
           />
 
-          {/* 이 폴더(또는 루트)의 게시글 */}
-          <div className="list-head list-head-boards">
-            <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
-          </div>
-          <BoardList
-            boards={boards.filter((b) => (b.folder_id || null) === (currentFolder?.id || null))}
-            onOpen={tryOpen}
-            siteAdmin={Boolean(user.is_site_admin)}
-            onDelete={(b) => setConfirmDeleteBoard(b)}
-          />
+          {/* 게시글: 홈(루트)에선 못 만들고 폴더만. 폴더 안에서만 새 게시글 */}
+          {currentFolder ? (
+            <>
+              <div className="list-head list-head-boards">
+                <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+              </div>
+              <BoardList
+                boards={currentBoards}
+                onOpen={tryOpen}
+                siteAdmin={Boolean(user.is_site_admin)}
+                onDelete={(b) => setConfirmDeleteBoard(b)}
+              />
+            </>
+          ) : (
+            // 홈: 폴더만. 혹시 옛 루트 게시글이 있으면 그것만 보여줌(새 생성 버튼은 없음)
+            currentBoards.length > 0 && (
+              <BoardList
+                boards={currentBoards}
+                onOpen={tryOpen}
+                siteAdmin={Boolean(user.is_site_admin)}
+                onDelete={(b) => setConfirmDeleteBoard(b)}
+              />
+            )
+          )}
         </>
       )}
 
