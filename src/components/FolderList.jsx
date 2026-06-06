@@ -43,9 +43,7 @@ function FolderList({ folders, onOpen, onNew, onDelete, canDelete }) {
         </div>
       )}
 
-      {folders.length === 0 ? (
-        <p className="muted">폴더가 없습니다. '새 폴더'로 만들어 보세요.</p>
-      ) : (
+      {folders.length > 0 && (
         <ul className="board-list">
           {folders.map((f) => (
             <li key={f.id} className="board-row">

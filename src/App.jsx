@@ -56,7 +56,7 @@ function App() {
   const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
   const [folders, setFolders] = useState([])
-  const [openFolder, setOpenFolder] = useState(null) // 보고 있는 폴더(없으면 폴더 목록)
+  const [folderPath, setFolderPath] = useState([]) // 현재 위치 경로(루트=빈 배열)
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null)
   const [openBoard, setOpenBoard] = useState(null)
   const [items, setItems] = useState([])
@@ -73,6 +73,7 @@ function App() {
   const [error, setError] = useState('')
 
   const configError = supabase ? '' : 'Supabase 연결 정보가 없습니다 (.env.local 확인).'
+  const currentFolder = folderPath.length ? folderPath[folderPath.length - 1] : null
 
   useEffect(() => {
     if (!supabase) return
@@ -129,7 +130,7 @@ function App() {
     localStorage.removeItem('user')
     setUser(null)
     setOpenBoard(null)
-    setOpenFolder(null)
+    setFolderPath([])
     setEditing(false)
     setAdminPw(null)
     setShowPending(false)
@@ -151,7 +152,7 @@ function App() {
   }
   async function doCreateFolder(name, isPrivate) {
     try {
-      await createFolder(user.token, name, isPrivate)
+      await createFolder(user.token, name, isPrivate, currentFolder?.id || null)
       await reloadFolders()
     } catch (e) {
       setError(e.message)
@@ -356,7 +357,7 @@ function App() {
           token={user.token}
           author={user.name}
           adminPw={adminPw}
-          folderId={openFolder?.id || ''}
+          folderId={currentFolder?.id || ''}
           board={editTarget}
           originalItems={editTarget ? items : []}
           nextSortOrder={nextSortOrder}
@@ -385,40 +386,50 @@ function App() {
         />
       )}
 
-      {/* 폴더 안: 그 폴더의 게시글 목록 */}
-      {!loading && !editing && !showPending && !openBoard && openFolder && (
+      {/* 폴더/게시글 화면 (루트 또는 현재 폴더) */}
+      {!loading && !editing && !showPending && !openBoard && (
         <>
-          <div className="list-head">
-            <button className="back-btn" onClick={() => setOpenFolder(null)}>← 폴더</button>
-            <span className="folder-title">
-              {openFolder.is_private ? '🔒 ' : '📁 '}
-              {openFolder.name}
-            </span>
-            <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
-          </div>
-          <BoardList
-            boards={boards.filter((b) => b.folder_id === openFolder.id)}
-            onOpen={tryOpen}
-            siteAdmin={Boolean(user.is_site_admin)}
-            onDelete={(b) => setConfirmDeleteBoard(b)}
-          />
-        </>
-      )}
+          {/* 경로(브레드크럼) — 조각을 누르면 그 폴더로 이동 */}
+          <nav className="crumbs">
+            <button className="crumb" onClick={() => setFolderPath([])}>🏠 홈</button>
+            {folderPath.map((f, i) => (
+              <span className="crumb-wrap" key={f.id}>
+                <span className="crumb-sep">›</span>
+                <button className="crumb" onClick={() => setFolderPath(folderPath.slice(0, i + 1))}>
+                  {f.name}
+                </button>
+              </span>
+            ))}
+          </nav>
 
-      {/* 최상위: 폴더 목록 */}
-      {!loading && !editing && !showPending && !openBoard && !openFolder && (
-        <>
-          {user.is_site_admin && (
+          {user.is_site_admin && !currentFolder && (
             <div className="list-head">
               <button className="btn" onClick={() => setShowPending(true)}>계정 관리</button>
             </div>
           )}
+
+          {/* 하위 폴더 */}
           <FolderList
-            folders={folders.filter((f) => !f.is_private || f.owner === user.name)}
-            onOpen={(f) => setOpenFolder(f)}
+            folders={folders.filter(
+              (f) =>
+                (f.parent_id || null) === (currentFolder?.id || null) &&
+                (!f.is_private || f.owner === user.name),
+            )}
+            onOpen={(f) => setFolderPath((p) => [...p, f])}
             onNew={doCreateFolder}
             onDelete={(f) => setConfirmDeleteFolder(f)}
             canDelete={(f) => (f.is_private ? f.owner === user.name : Boolean(user.is_site_admin))}
+          />
+
+          {/* 이 폴더(또는 루트)의 게시글 */}
+          <div className="list-head list-head-boards">
+            <button className="btn btn-primary" onClick={openNew}>+ 새 게시글</button>
+          </div>
+          <BoardList
+            boards={boards.filter((b) => (b.folder_id || null) === (currentFolder?.id || null))}
+            onOpen={tryOpen}
+            siteAdmin={Boolean(user.is_site_admin)}
+            onDelete={(b) => setConfirmDeleteBoard(b)}
           />
         </>
       )}

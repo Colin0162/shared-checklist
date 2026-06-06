@@ -99,16 +99,17 @@ export async function verifyBoardEntry(boardId, pw) {
 export async function getFolders() {
   const { data, error } = await supabase
     .from('folders')
-    .select('id, name, owner, is_private, sort_order')
+    .select('id, name, owner, is_private, parent_id, sort_order')
     .order('sort_order')
   if (error) throw error
   return data
 }
-export async function createFolder(token, name, isPrivate) {
+export async function createFolder(token, name, isPrivate, parentId) {
   const { data, error } = await supabase.rpc('create_folder', {
     p_token: token,
     p_name: name,
     p_is_private: isPrivate,
+    p_parent_id: parentId,
   })
   if (error) throw error
   return data

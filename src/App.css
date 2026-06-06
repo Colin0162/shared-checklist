@@ -189,6 +189,36 @@
   align-items: center;
   margin-bottom: 12px;
 }
+.list-head-boards {
+  margin-top: 16px;
+}
+
+/* 경로(브레드크럼) */
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1px;
+  margin-bottom: 10px;
+}
+.crumb {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 5px 7px;
+  border-radius: 8px;
+}
+.crumb:hover,
+.crumb:active {
+  background: var(--accent-weak);
+}
+.crumb-sep {
+  color: var(--muted);
+}
 .folder-title {
   flex: 1;
   font-weight: 700;

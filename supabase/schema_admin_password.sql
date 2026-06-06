@@ -321,6 +321,9 @@ alter table public.folders enable row level security;
 drop policy if exists folders_select_anon on public.folders;
 create policy folders_select_anon on public.folders for select using (true);
 
+-- 폴더 안의 폴더(하위 폴더). null이면 최상위
+alter table public.folders add column if not exists parent_id uuid references public.folders(id) on delete cascade;
+
 -- 게시글이 어느 폴더에 속하는지
 alter table public.boards add column if not exists folder_id uuid references public.folders(id) on delete set null;
 
@@ -331,15 +334,16 @@ update public.boards set folder_id = (select id from public.folders where name =
 where folder_id is null;
 
 -- 폴더 생성 (로그인 사용자). 비공개면 소유자=본인
-create or replace function public.create_folder(p_token text, p_name text, p_is_private boolean)
+drop function if exists public.create_folder(text,text,boolean);
+create or replace function public.create_folder(p_token text, p_name text, p_is_private boolean, p_parent_id uuid)
 returns uuid language plpgsql security definer set search_path = public as $$
 declare v_name text; v_id uuid;
 begin
   select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   if btrim(coalesce(p_name,'')) = '' then raise exception '폴더 이름을 입력하세요.'; end if;
-  insert into public.folders (name, owner, is_private)
-  values (btrim(p_name), case when p_is_private then v_name else '' end, coalesce(p_is_private, false))
+  insert into public.folders (name, owner, is_private, parent_id)
+  values (btrim(p_name), case when p_is_private then v_name else '' end, coalesce(p_is_private, false), p_parent_id)
   returning id into v_id;
   return v_id;
 end; $$;
@@ -355,6 +359,9 @@ begin
   if exists (select 1 from public.boards where folder_id = p_folder_id) then
     raise exception '폴더 안 게시글을 먼저 옮기거나 삭제하세요.';
   end if;
+  if exists (select 1 from public.folders where parent_id = p_folder_id) then
+    raise exception '하위 폴더를 먼저 정리하세요.';
+  end if;
   select owner, is_private into v_owner, v_priv from public.folders where id = p_folder_id;
   if v_priv then
     if v_owner <> v_name then raise exception '본인 폴더만 삭제할 수 있습니다.'; end if;
@@ -364,8 +371,8 @@ begin
   delete from public.folders where id = p_folder_id;
 end; $$;
 
-grant execute on function public.create_folder(text,text,boolean) to anon, authenticated;
-grant execute on function public.delete_folder(text,uuid)         to anon, authenticated;
+grant execute on function public.create_folder(text,text,boolean,uuid) to anon, authenticated;
+grant execute on function public.delete_folder(text,uuid)              to anon, authenticated;
 
 -- ── 템플릿 (#1): 체크리스트 구성을 저장해두고 새 게시글에 불러오기 ──
 create table if not exists public.templates (
