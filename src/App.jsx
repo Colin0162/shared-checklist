@@ -2,7 +2,7 @@
 //   로그인 → 폴더 목록 → (폴더 안) 게시글 목록 → 게시글(체크리스트) → 편집
 //   각 화면 조각은 src/components/* 에 있음. 어떤 파일이 어느 화면인지,
 //   무엇을 바꾸면 어디가 바뀌는지는 → 프로젝트 루트의 EDITING_GUIDE.md 참고.
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import './App.css'
 import { supabase } from './lib/supabase'
 import {
@@ -71,6 +71,8 @@ function App() {
   const [showPending, setShowPending] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [showChangePw, setShowChangePw] = useState(false)
+  const [noteLocks, setNoteLocks] = useState({}) // { itemId: { user, ts } } 비고 작성 중 잠금
+  const lockChanRef = useRef(null)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
@@ -123,6 +125,53 @@ function App() {
       supabase.removeChannel(ch)
     }
   }, [openBoard])
+
+  // 실시간: 비고 작성 잠금(broadcast). 누가 어떤 항목 비고를 쓰는 중인지 공유
+  useEffect(() => {
+    if (!supabase || !openBoard) return
+    const ch = supabase.channel('notelock-' + openBoard.id, {
+      config: { broadcast: { self: false } },
+    })
+    ch.on('broadcast', { event: 'lock' }, ({ payload }) => {
+      setNoteLocks((prev) => {
+        const next = { ...prev }
+        if (payload.locked) next[payload.itemId] = { user: payload.user, ts: Date.now() }
+        else delete next[payload.itemId]
+        return next
+      })
+    }).subscribe()
+    lockChanRef.current = ch
+    // 연결 끊김 등으로 남은 잠금은 45초 뒤 자동 해제(스턱 방지)
+    const prune = setInterval(() => {
+      setNoteLocks((prev) => {
+        const now = Date.now()
+        let changed = false
+        const next = {}
+        for (const [k, v] of Object.entries(prev)) {
+          if (now - v.ts < 45000) next[k] = v
+          else changed = true
+        }
+        return changed ? next : prev
+      })
+    }, 5000)
+    return () => {
+      clearInterval(prune)
+      supabase.removeChannel(ch)
+      lockChanRef.current = null
+      setNoteLocks({}) // 보드 떠날 때 잠금 표시 정리
+    }
+  }, [openBoard])
+
+  const sendNoteLock = useCallback(
+    (itemId, locked) => {
+      lockChanRef.current?.send({
+        type: 'broadcast',
+        event: 'lock',
+        payload: { itemId, user: user?.name || '', locked },
+      })
+    },
+    [user],
+  )
 
   function handleLogin(u) {
     const value = { name: u.name, is_site_admin: u.is_site_admin, token: u.token }
@@ -397,6 +446,9 @@ function App() {
           onReset={() => setConfirmReset(true)}
           onSetStatus={handleSetStatus}
           onSetNote={handleSetNote}
+          noteLocks={noteLocks}
+          myName={user.name}
+          onNoteLock={sendNoteLock}
         />
       )}
 

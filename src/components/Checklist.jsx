@@ -39,6 +39,9 @@ function Checklist({
   onReset,
   onSetStatus,
   onSetNote,
+  noteLocks,
+  myName,
+  onNoteLock,
 }) {
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
   const [assigneeFilter, setAssigneeFilter] = useState('')
@@ -144,6 +147,9 @@ function Checklist({
                       mode={mode}
                       onSetStatus={onSetStatus}
                       onSetNote={onSetNote}
+                      noteLockedBy={(noteLocks && noteLocks[item.id] && noteLocks[item.id].user) || ''}
+                      myName={myName}
+                      onNoteLock={onNoteLock}
                     />
                   ))}
                 </ul>

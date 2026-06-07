@@ -22,7 +22,7 @@ function withLinks(text) {
 //   todo  : 텍스트만(링크 클릭)
 // 비고칸(item.show_note)이 켜진 항목은 아래에 입력칸.
 // props: item, mode, onSetStatus(id,상태), onSetNote(id,비고)
-function Item({ item, mode, onSetStatus, onSetNote }) {
+function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = '', onNoteLock }) {
   const checked = item.status === 'done'
   const [noteDraft, setNoteDraft] = useState(item.note ?? '')
   const [focused, setFocused] = useState(false)
@@ -57,17 +57,25 @@ function Item({ item, mode, onSetStatus, onSetNote }) {
     </span>
   )
 
+  // 다른 사람이 이 비고를 쓰는 중이면 잠금(내가 입력 중일 땐 풀림)
+  const lockedByOther = Boolean(noteLockedBy) && noteLockedBy !== myName && !focused
+
   const note = item.show_note && (
     <textarea
       ref={taRef}
-      className="item-note-input"
+      className={'item-note-input' + (lockedByOther ? ' locked' : '')}
       rows={1}
-      placeholder="비고 입력… (줄바꿈 가능)"
+      disabled={lockedByOther}
+      placeholder={lockedByOther ? `${noteLockedBy}님이 작성 중…` : '비고 입력… (줄바꿈 가능)'}
       value={noteDraft}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        setFocused(true)
+        if (onNoteLock) onNoteLock(item.id, true)
+      }}
       onChange={(e) => setNoteDraft(e.target.value)}
       onBlur={() => {
         setFocused(false)
+        if (onNoteLock) onNoteLock(item.id, false)
         if (noteDraft !== (item.note ?? '')) onSetNote(item.id, noteDraft)
       }}
     />
