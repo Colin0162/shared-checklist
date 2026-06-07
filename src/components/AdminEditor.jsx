@@ -473,66 +473,88 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         <span className="field-label">항목</span>
         <ul className="editor-rows">
           {rows.map((row) => (
-            <li className="editor-row" key={row.key}>
-              <select
-                className="text-input row-cat"
-                value={row.group_name}
-                onChange={(e) => updateRow(row.key, 'group_name', e.target.value)}
-              >
-                <option value="">—</option>
-                {categoryOptions.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-                {row.group_name && !categoryOptions.includes(row.group_name) && (
-                  <option value={row.group_name}>{row.group_name}</option>
-                )}
-              </select>
-              {mode === 'todo' ? (
-                <textarea
-                  className="text-input row-label"
-                  rows={2}
-                  value={row.label}
-                  onChange={(e) => updateRow(row.key, 'label', e.target.value)}
-                  placeholder="내용 (링크/줄바꿈 가능)"
-                />
-              ) : (
-                <input
-                  className="text-input row-label"
-                  value={row.label}
-                  onChange={(e) => updateRow(row.key, 'label', e.target.value)}
-                  placeholder="항목명"
-                />
-              )}
-              {mode === 'check' && (
-                <input
-                  className="text-input row-qty"
-                  value={row.quantity}
-                  onChange={(e) => updateRow(row.key, 'quantity', e.target.value)}
-                  placeholder="수량(선택)"
-                />
-              )}
-              {mode !== 'todo' && (
-                <input
-                  className="text-input row-assignee"
-                  value={row.assignee}
-                  onChange={(e) => updateRow(row.key, 'assignee', e.target.value)}
-                  placeholder="담당자(선택)"
-                />
-              )}
-              {mode !== 'todo' && (
-                <label className="row-note" title="비고칸 사용">
-                  <input
-                    type="checkbox"
-                    checked={row.show_note}
-                    onChange={(e) => updateRow(row.key, 'show_note', e.target.checked)}
-                  />
-                  비고
+            <li className="editor-card" key={row.key}>
+              {categoryOptions.length > 0 && (
+                <label className="ec-field">
+                  <span className="ec-label">대항목</span>
+                  <select
+                    className="text-input"
+                    value={row.group_name}
+                    onChange={(e) => updateRow(row.key, 'group_name', e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {categoryOptions.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                    {row.group_name && !categoryOptions.includes(row.group_name) && (
+                      <option value={row.group_name}>{row.group_name}</option>
+                    )}
+                  </select>
                 </label>
               )}
-              <div className="row-actions">
-                <button className="icon-btn" onClick={() => move(row.key, -1)} title="위로">↑</button>
-                <button className="icon-btn" onClick={() => move(row.key, 1)} title="아래로">↓</button>
-                <button className="icon-btn" onClick={() => removeRow(row.key)} title="삭제">✕</button>
+
+              <label className="ec-field">
+                <span className="ec-label">{mode === 'todo' ? '내용' : '항목명'}</span>
+                {mode === 'todo' ? (
+                  <textarea
+                    className="text-input"
+                    rows={2}
+                    value={row.label}
+                    onChange={(e) => updateRow(row.key, 'label', e.target.value)}
+                    placeholder="내용 (링크/줄바꿈 가능)"
+                  />
+                ) : (
+                  <input
+                    className="text-input"
+                    value={row.label}
+                    onChange={(e) => updateRow(row.key, 'label', e.target.value)}
+                    placeholder="항목명"
+                  />
+                )}
+              </label>
+
+              {mode === 'check' && (
+                <label className="ec-field">
+                  <span className="ec-label">수량 (선택)</span>
+                  <input
+                    className="text-input"
+                    value={row.quantity}
+                    onChange={(e) => updateRow(row.key, 'quantity', e.target.value)}
+                    placeholder="예: 22개"
+                  />
+                </label>
+              )}
+
+              {mode !== 'todo' && (
+                <label className="ec-field">
+                  <span className="ec-label">담당자 (선택)</span>
+                  <input
+                    className="text-input"
+                    value={row.assignee}
+                    onChange={(e) => updateRow(row.key, 'assignee', e.target.value)}
+                    placeholder="예: 강무관"
+                  />
+                </label>
+              )}
+
+              <div className="ec-foot">
+                {mode !== 'todo' ? (
+                  <label className="row-note" title="비고칸 사용">
+                    <input
+                      type="checkbox"
+                      checked={row.show_note}
+                      onChange={(e) => updateRow(row.key, 'show_note', e.target.checked)}
+                    />
+                    비고칸 사용
+                  </label>
+                ) : (
+                  <span />
+                )}
+                <div className="row-actions">
+                  <button className="icon-btn" onClick={() => move(row.key, -1)} title="위로">↑</button>
+                  <button className="icon-btn" onClick={() => move(row.key, 1)} title="아래로">↓</button>
+                  <button className="icon-btn" onClick={() => removeRow(row.key)} title="삭제">✕</button>
+                </div>
               </div>
             </li>
           ))}

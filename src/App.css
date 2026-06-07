@@ -721,6 +721,34 @@
   padding-bottom: 8px;
   border-bottom: 1px dashed var(--border);
 }
+
+/* 항목 빌더 카드 (모바일 친화: 칸마다 라벨 + 세로 배치) */
+.editor-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fcfbf8;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.ec-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ec-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.ec-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
 .row-cat {
   flex: 0 0 120px;
 }
