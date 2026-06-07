@@ -61,13 +61,15 @@ function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = 
   const lockedByOther = Boolean(noteLockedBy) && noteLockedBy !== myName && !focused
 
   const note = item.show_note && (
-    <textarea
-      ref={taRef}
-      className={'item-note-input' + (lockedByOther ? ' locked' : '')}
-      rows={1}
-      disabled={lockedByOther}
-      placeholder={lockedByOther ? `${noteLockedBy}님이 작성 중…` : '비고 입력… (줄바꿈 가능)'}
-      value={noteDraft}
+    <>
+      {lockedByOther && <div className="note-lock-tag">🔒 {noteLockedBy}님이 작성 중…</div>}
+      <textarea
+        ref={taRef}
+        className={'item-note-input' + (lockedByOther ? ' locked' : '')}
+        rows={1}
+        disabled={lockedByOther}
+        placeholder="비고 입력… (줄바꿈 가능)"
+        value={noteDraft}
       onFocus={() => {
         setFocused(true)
         if (onNoteLock) onNoteLock(item.id, true)
@@ -77,8 +79,9 @@ function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = 
         setFocused(false)
         if (onNoteLock) onNoteLock(item.id, false)
         if (noteDraft !== (item.note ?? '')) onSetNote(item.id, noteDraft)
-      }}
-    />
+        }}
+      />
+    </>
   )
 
   if (mode === 'check') {

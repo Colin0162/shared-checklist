@@ -583,6 +583,12 @@
   color: var(--muted);
   cursor: not-allowed;
 }
+.note-lock-tag {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 8px 14px 0;
+}
 
 /* 할 일 리스트 */
 .todo-line {
