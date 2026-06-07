@@ -326,6 +326,40 @@ begin
 end; $$;
 grant execute on function public.change_my_password(text,text,text) to anon, authenticated;
 
+-- ── 쓰기 잠금: 항목 체크/비고는 '로그인한 사람'만 (직접 쓰기 차단) ──
+-- 읽기(items_select_anon)는 그대로 열어둠 → 실시간 동기화 유지.
+create or replace function public.check_item(p_token text, p_item_id uuid, p_status text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_name text;
+begin
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  update public.items
+    set status = p_status,
+        checked_by = case when p_status <> '' then v_name else '' end,
+        updated_at = now()
+  where id = p_item_id;
+end; $$;
+
+create or replace function public.set_note(p_token text, p_item_id uuid, p_note text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_name text;
+begin
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  update public.items set note = p_note, updated_at = now() where id = p_item_id;
+end; $$;
+
+grant execute on function public.check_item(text,uuid,text) to anon, authenticated;
+grant execute on function public.set_note(text,uuid,text)   to anon, authenticated;
+
+-- 항목 직접 쓰기(비로그인 포함) 차단. 관리자 편집·체크/비고는 위 RPC가 서버권한으로 처리.
+-- ※ 만약 체크가 안 되면(긴급 롤백) 아래 한 줄을 실행:
+--    create policy items_update_anon on public.items for update using (true) with check (true);
+drop policy if exists items_insert_anon on public.items;
+drop policy if exists items_update_anon on public.items;
+drop policy if exists items_delete_anon on public.items;
+
 -- ── 폴더 (#4) ──
 create table if not exists public.folders (
   id         uuid primary key default gen_random_uuid(),

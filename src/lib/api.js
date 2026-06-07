@@ -36,18 +36,17 @@ export async function getBoardItems(boardId) {
 }
 
 // ── 콘텐츠 쓰기 (직접, 로그인 사용자) ──
-export async function setItemStatus(id, status, checkedBy = '') {
-  const { error } = await supabase
-    .from('items')
-    .update({ status, checked_by: checkedBy, updated_at: new Date().toISOString() })
-    .eq('id', id)
+// 체크/비고는 로그인 토큰으로 서버 RPC 호출 (체크한 사람은 서버가 토큰에서 결정)
+export async function setItemStatus(token, id, status) {
+  const { error } = await supabase.rpc('check_item', {
+    p_token: token,
+    p_item_id: id,
+    p_status: status,
+  })
   if (error) throw error
 }
-export async function setItemNote(id, note) {
-  const { error } = await supabase
-    .from('items')
-    .update({ note, updated_at: new Date().toISOString() })
-    .eq('id', id)
+export async function setItemNote(token, id, note) {
+  const { error } = await supabase.rpc('set_note', { p_token: token, p_item_id: id, p_note: note })
   if (error) throw error
 }
 export async function setMemo(boardId, memo) {

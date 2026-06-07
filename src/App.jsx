@@ -280,21 +280,24 @@ function App() {
         prev.map((it) => (it.id === id ? { ...it, status, checked_by: checkedBy } : it)),
       )
       try {
-        await setItemStatus(id, status, checkedBy)
+        await setItemStatus(user.token, id, status)
       } catch (e) {
         setError(e.message)
       }
     },
     [user],
   )
-  const handleSetNote = useCallback(async (id, note) => {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note } : it)))
-    try {
-      await setItemNote(id, note)
-    } catch (e) {
-      setError(e.message)
-    }
-  }, [])
+  const handleSetNote = useCallback(
+    async (id, note) => {
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note } : it)))
+      try {
+        await setItemNote(user.token, id, note)
+      } catch (e) {
+        setError(e.message)
+      }
+    },
+    [user],
+  )
   function openNew() {
     setEditTarget(null)
     setEditing(true)
