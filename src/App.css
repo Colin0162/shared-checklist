@@ -871,3 +871,70 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* ============================================================
+   인쇄 / PDF 저장 (브라우저 인쇄 → 'PDF로 저장' 가능)
+   화면용 버튼·네비게이션은 숨기고, 체크리스트 내용만 깔끔하게.
+   ============================================================ */
+@media print {
+  .app-header,
+  .crumbs,
+  .list-head,
+  .toolbar,
+  .head-actions,
+  .back-btn,
+  .modal-overlay {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  #root {
+    max-width: none;
+    padding: 0;
+  }
+  .board-top {
+    position: static !important;
+    margin: 0 !important;
+    border: none !important;
+    padding: 0 0 6px !important;
+  }
+  .board-heading {
+    font-size: 20px;
+  }
+  .item,
+  .todo-line,
+  .board-card,
+  .editor {
+    box-shadow: none !important;
+  }
+  .item {
+    break-inside: avoid;
+  }
+  /* 체크 표시를 흑백으로 보이게 */
+  .check-box {
+    border-color: #000 !important;
+    background: transparent !important;
+  }
+  .check-box.on {
+    color: #000 !important;
+  }
+  .item.checked {
+    background: transparent !important;
+  }
+  .item-note-input {
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  /* 표 헤더 음영 유지 */
+  .data-table th {
+    background: #eee !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* 링크 뒤에 URL 안 붙이기 */
+  a[href]::after {
+    content: '' !important;
+  }
+}

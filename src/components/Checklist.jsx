@@ -69,6 +69,13 @@ function Checklist({
           <h2 className="board-heading">{board.title}</h2>
           {board.event_date && <span className="dday">{ddayLabel(board.event_date)}</span>}
           <div className="head-actions">
+            <button
+              className="btn btn-small"
+              onClick={() => window.print()}
+              title="인쇄 / PDF로 저장"
+            >
+              🖨 인쇄
+            </button>
             {adminMode ? (
               <>
                 <button className="btn btn-small" onClick={onEdit}>편집</button>
