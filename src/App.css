@@ -917,6 +917,48 @@
   font-weight: 600;
 }
 
+/* 최근 오류 로그 (계정 관리 화면) — 운영자가 사용자 에러 확인 */
+.error-log {
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.error-log-title {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.error-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.error-log-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.error-log-when {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 84px;
+}
+.error-log-who {
+  font-weight: 700;
+}
+.error-log-msg {
+  color: var(--danger);
+}
+.error-log-ctx {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 11px;
+  word-break: break-all;
+}
+
 /* 저장 실패 표시 (인터넷 약할 때) — 항목 안에 작게 + 다시 시도 버튼 */
 .save-failed {
   display: flex;

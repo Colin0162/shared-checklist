@@ -46,6 +46,34 @@ export async function getBoardActivity(token, boardId, limit = 50) {
   return data
 }
 
+// ── 에러 로깅(가벼운 버전) ──
+// 현재 로그인 토큰을 localStorage에서 직접 읽어, 사용자가 본 에러를 서버에 남긴다.
+function currentToken() {
+  try {
+    return JSON.parse(localStorage.getItem('user'))?.token || null
+  } catch {
+    return null
+  }
+}
+// 에러 기록(베스트에포트): 실패해도 절대 throw 안 함(앱 흐름·무한루프 방지)
+export async function logClientError(message) {
+  if (!supabase) return
+  try {
+    await supabase.rpc('log_client_error', {
+      p_token: currentToken(),
+      p_message: String(message ?? '').slice(0, 500),
+      p_context: `${location.pathname} · ${navigator.userAgent}`.slice(0, 300),
+    })
+  } catch {
+    /* 로깅 실패는 조용히 무시 */
+  }
+}
+export async function getClientErrors(token, limit = 50) {
+  const { data, error } = await supabase.rpc('list_client_errors', { p_token: token, p_limit: limit })
+  if (error) throw error
+  return data
+}
+
 // ── 콘텐츠 쓰기 (직접, 로그인 사용자) ──
 // 체크/비고는 로그인 토큰으로 서버 RPC 호출 (체크한 사람은 서버가 토큰에서 결정)
 export async function setItemStatus(token, id, status) {

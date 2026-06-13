@@ -25,7 +25,8 @@ function isAuthError(msg) {
 // 열린 게시글의 항목: 로드 + 실시간 + 체크/비고 저장(+실패 표시·재시도).
 //   openBoardId가 바뀌면 새로 로드한다. setState는 비동기 콜백 안에서만(eslint 규칙).
 //   반환: { items, setItems, boardReady, saveErrors, handleSetStatus, handleSetNote, retrySave }
-export function useBoardItems(openBoardId, user, logout, setError) {
+//   reportError(msg): 에러를 화면 표시 + 서버 기록 (App에서 내려줌)
+export function useBoardItems(openBoardId, user, logout, reportError) {
   const [items, setItems] = useState([])
   const [itemsBoardId, setItemsBoardId] = useState(null) // 지금 items가 어느 게시글 것인지
   const [saveErrors, setSaveErrors] = useState({}) // { itemId: { kind:'status'|'note', value } }
@@ -42,12 +43,12 @@ export function useBoardItems(openBoardId, user, logout, setError) {
         setItemsBoardId(openBoardId)
       })
       .catch((e) => {
-        if (!cancelled) setError(e.message)
+        if (!cancelled) reportError(e.message)
       })
     return () => {
       cancelled = true
     }
-  }, [openBoardId, itemsBoardId, setError])
+  }, [openBoardId, itemsBoardId, reportError])
 
   // 실시간: 열린 게시글의 항목 변경
   useEffect(() => {
@@ -69,13 +70,13 @@ export function useBoardItems(openBoardId, user, logout, setError) {
   const onSaveFail = useCallback(
     (id, kind, value, e) => {
       if (isAuthError(e?.message)) {
-        setError('로그인이 만료되었어요. 다시 로그인해 주세요.')
+        reportError('로그인이 만료되었어요. 다시 로그인해 주세요.')
         logout()
         return
       }
       setSaveErrors((prev) => ({ ...prev, [id]: { kind, value } }))
     },
-    [logout, setError],
+    [logout, reportError],
   )
   const clearSaveError = useCallback((id) => {
     setSaveErrors((prev) => {

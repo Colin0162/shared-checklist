@@ -16,6 +16,7 @@ import {
   getFolders,
   createFolder,
   deleteFolder,
+  logClientError,
 } from './lib/api'
 import { useBoardItems } from './hooks/useBoardItems'
 import { useNoteLocks } from './hooks/useNoteLocks'
@@ -116,9 +117,15 @@ function App() {
     navigate('/') // openBoard/folderPath는 URL에서 파생되므로 자동 정리
   }, [navigate])
 
+  // 에러를 화면에 표시 + 서버에 기록(운영자가 '계정 관리'에서 봄). 기록은 베스트에포트
+  const reportError = useCallback((msg) => {
+    setError(msg)
+    logClientError(msg)
+  }, [])
+
   // 열린 게시글의 항목(로드·실시간·체크/비고·저장실패) + 비고 잠금은 훅으로 분리
   const { items, setItems, boardReady, saveErrors, handleSetStatus, handleSetNote, retrySave } =
-    useBoardItems(openBoardId, user, logout, setError)
+    useBoardItems(openBoardId, user, logout, reportError)
   const { noteLocks, sendNoteLock } = useNoteLocks(openBoardId, user?.name)
 
   useEffect(() => {
@@ -128,9 +135,9 @@ function App() {
         setBoards(bs)
         setFolders(fs)
       })
-      .catch((e) => setError(e.message))
+      .catch((e) => reportError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reportError])
 
   // 없는/삭제된 게시글 URL로 들어오면 홈으로 (로드 끝난 뒤 판단)
   useEffect(() => {
@@ -166,14 +173,14 @@ function App() {
     try {
       setBoards(await getBoards())
     } catch (e) {
-      setError(e.message)
+      reportError(e.message)
     }
   }
   async function reloadFolders() {
     try {
       setFolders(await getFolders())
     } catch (e) {
-      setError(e.message)
+      reportError(e.message)
     }
   }
   async function doCreateFolder(name, isPrivate) {
@@ -181,7 +188,7 @@ function App() {
       await createFolder(user.token, name, isPrivate, currentFolder?.id || null)
       await reloadFolders()
     } catch (e) {
-      setError(e.message)
+      reportError(e.message)
     }
   }
   async function doDeleteFolder() {
@@ -189,7 +196,7 @@ function App() {
       await deleteFolder(user.token, confirmDeleteFolder.id)
       await reloadFolders()
     } catch (e) {
-      setError(e.message)
+      reportError(e.message)
     } finally {
       setConfirmDeleteFolder(null)
     }
@@ -244,7 +251,7 @@ function App() {
       setBoards(await getBoards()) // openBoard는 boards에서 파생되어 자동 갱신
       if (openBoardId) setItems(await getBoardItems(openBoardId)) // 편집된 항목 다시 로드
     } catch (e) {
-      setError(e.message)
+      reportError(e.message)
     }
   }
   async function handleDeleted() {
@@ -258,7 +265,7 @@ function App() {
       await resetBoard(openBoard.id, adminPw)
       setItems(await getBoardItems(openBoard.id))
     } catch (e) {
-      setError(e.message)
+      reportError(e.message)
     } finally {
       setConfirmReset(false)
     }
@@ -269,7 +276,7 @@ function App() {
       await siteDeleteBoard(user.token, confirmDeleteBoard.id)
       await reloadBoards()
     } catch (e) {
-      setError(e.message)
+      reportError(e.message)
     } finally {
       setConfirmDeleteBoard(null)
     }

@@ -532,3 +532,38 @@ end; $$;
 grant execute on function public.save_template(text,text,text,jsonb,jsonb,jsonb) to anon, authenticated;
 grant execute on function public.delete_template(text,uuid)                to anon, authenticated;
 grant execute on function public.list_templates(text)                      to anon, authenticated;
+
+-- ── 에러 로깅(가벼운 버전): 사용자가 본 오류를 운영자(사이트 관리자)가 볼 수 있게 ──
+create table if not exists public.client_error (
+  id         bigint generated always as identity primary key,
+  user_name  text not null default '',   -- 토큰이 유효하면 그 사람 이름(아니면 '')
+  message    text not null default '',    -- 에러 메시지
+  context    text not null default '',    -- 발생 위치(URL) + 브라우저 등
+  created_at timestamptz not null default now()
+);
+alter table public.client_error enable row level security;  -- anon 직접 접근 차단(기록/조회는 RPC로만)
+create index if not exists client_error_created_idx on public.client_error (created_at desc);
+
+-- 에러 기록: 로그인 안 됐거나 토큰 만료여도 기록은 됨(이름만 비게). 빈 메시지는 무시.
+create or replace function public.log_client_error(p_token text, p_message text, p_context text)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_name text := '';
+begin
+  if coalesce(btrim(p_message), '') = '' then return; end if;
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id
+    where s.token::text = p_token and s.created_at > now() - interval '30 days';
+  insert into public.client_error (user_name, message, context)
+  values (coalesce(v_name, ''), left(p_message, 500), left(coalesce(p_context, ''), 300));
+end; $$;
+grant execute on function public.log_client_error(text,text,text) to anon, authenticated;
+
+-- 최근 오류 조회(사이트 관리자만) — 기본 50, 최대 200
+create or replace function public.list_client_errors(p_token text, p_limit int)
+returns table(user_name text, message text, context text, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+begin
+  if not _is_site_admin(p_token) then raise exception '사이트 관리자만 가능합니다.'; end if;
+  return query select e.user_name, e.message, e.context, e.created_at
+    from public.client_error e order by e.created_at desc limit least(coalesce(p_limit, 50), 200);
+end; $$;
+grant execute on function public.list_client_errors(text,int) to anon, authenticated;
