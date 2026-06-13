@@ -9,7 +9,10 @@ function applyItemChange(prev, payload) {
     return [...prev, payload.new].sort((a, b) => a.sort_order - b.sort_order)
   }
   if (payload.eventType === 'UPDATE') {
-    return prev.map((it) => (it.id === payload.new.id ? { ...it, ...payload.new } : it))
+    // 필드만 갱신하지 말고 sort_order로 다시 정렬 → 순서 변경이 실시간으로 반영됨
+    return prev
+      .map((it) => (it.id === payload.new.id ? { ...it, ...payload.new } : it))
+      .sort((a, b) => a.sort_order - b.sort_order)
   }
   if (payload.eventType === 'DELETE') {
     return prev.filter((it) => it.id !== payload.old.id)

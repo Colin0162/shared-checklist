@@ -189,6 +189,18 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
       return copy
     })
   }
+  // 맨 위/맨 아래로 이동 (edge: 'top' | 'bottom')
+  function moveToEdge(key, edge) {
+    setRows((r) => {
+      const i = r.findIndex((x) => x.key === key)
+      if (i < 0) return r
+      const copy = [...r]
+      const [it] = copy.splice(i, 1)
+      if (edge === 'top') copy.unshift(it)
+      else copy.push(it)
+      return copy
+    })
+  }
 
   async function handleSave() {
     if (!title.trim()) {
@@ -551,8 +563,10 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
                   <span />
                 )}
                 <div className="row-actions">
+                  <button className="icon-btn" onClick={() => moveToEdge(row.key, 'top')} title="맨 위로">⤒</button>
                   <button className="icon-btn" onClick={() => move(row.key, -1)} title="위로">↑</button>
                   <button className="icon-btn" onClick={() => move(row.key, 1)} title="아래로">↓</button>
+                  <button className="icon-btn" onClick={() => moveToEdge(row.key, 'bottom')} title="맨 아래로">⤓</button>
                   <button className="icon-btn" onClick={() => removeRow(row.key)} title="삭제">✕</button>
                 </div>
               </div>
