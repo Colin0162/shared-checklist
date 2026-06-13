@@ -927,6 +927,30 @@
     background: #fff !important;
     color: #000 !important;
   }
+  /* ── 표/일정표: 잘리지 않게 페이지 폭에 맞춤 ── */
+  /* 화면용 가로 스크롤(overflow-x:auto)이 인쇄에선 오른쪽을 잘라먹으므로 해제 */
+  .table-wrap {
+    overflow: visible !important;
+  }
+  .data-table {
+    width: 100% !important; /* max-content(내용폭) → 페이지 폭에 맞춤 */
+    table-layout: fixed; /* 칸을 균등 분배해 넘침 방지 */
+    font-size: 11px !important;
+  }
+  .data-table th,
+  .data-table td {
+    min-width: 0 !important; /* 화면용 96px 최소폭 해제 */
+    max-width: none !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    word-break: break-word; /* 긴 내용은 칸 안에서 줄바꿈 */
+  }
+  .data-table thead {
+    display: table-header-group; /* 여러 쪽으로 나뉘면 헤더를 매 쪽 반복 */
+  }
+  .data-table tr {
+    break-inside: avoid; /* 한 행이 페이지 경계에서 쪼개지지 않게 */
+  }
   /* 표 헤더 음영 유지 */
   .data-table th {
     background: #eee !important;
@@ -936,5 +960,20 @@
   /* 링크 뒤에 URL 안 붙이기 */
   a[href]::after {
     content: '' !important;
+  }
+
+  /* 기본 세로 방향(여백 확보) */
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  /* 표 모드 게시글은 가로(landscape)로 — 넓은 일정표가 더 잘 들어감.
+     이 속성을 모르는 일부 브라우저에선 세로로 나오지만, 위 폭-맞춤 덕에 잘리진 않음 */
+  @page landscape {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  body.print-table-mode .checklist {
+    page: landscape;
   }
 }

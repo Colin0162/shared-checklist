@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Item from './Item'
 import TableView from './TableView'
 import { ddayLabel } from '../lib/constants'
@@ -49,6 +49,13 @@ function Checklist({
   const isTodo = mode === 'todo'
   const isTable = mode === 'table'
   const hasProgress = mode === 'check' || mode === 'rate'
+
+  // 표 모드일 때만 인쇄를 가로 방향으로 (App.css의 @media print에서 사용)
+  useEffect(() => {
+    if (!isTable) return
+    document.body.classList.add('print-table-mode')
+    return () => document.body.classList.remove('print-table-mode')
+  }, [isTable])
   const assignees = [...new Set(items.map((it) => it.assignee).filter(Boolean))]
 
   const total = items.length

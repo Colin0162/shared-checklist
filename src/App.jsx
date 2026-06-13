@@ -3,6 +3,7 @@
 //   각 화면 조각은 src/components/* 에 있음. 어떤 파일이 어느 화면인지,
 //   무엇을 바꾸면 어디가 바뀌는지는 → 프로젝트 루트의 EDITING_GUIDE.md 참고.
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
 import { supabase } from './lib/supabase'
 import {
@@ -53,18 +54,45 @@ function loadUser() {
   }
 }
 
+// URL 경로 파싱: '/', '/folder/:id', '/board/:id' → { folderId, boardId }
+function parseRoute(pathname) {
+  const parts = pathname.split('/').filter(Boolean)
+  if (parts[0] === 'folder' && parts[1]) return { folderId: parts[1], boardId: null }
+  if (parts[0] === 'board' && parts[1]) return { folderId: null, boardId: parts[1] }
+  return { folderId: null, boardId: null }
+}
+
+// folderId에서 parent_id를 타고 올라가 브레드크럼 경로(루트→현재) 재구성
+function buildFolderPath(folders, folderId) {
+  if (!folderId) return []
+  const byId = new Map(folders.map((f) => [String(f.id), f]))
+  const path = []
+  const seen = new Set() // 순환 방지
+  let cur = byId.get(String(folderId))
+  while (cur && !seen.has(String(cur.id))) {
+    seen.add(String(cur.id))
+    path.unshift(cur)
+    cur = cur.parent_id ? byId.get(String(cur.parent_id)) : null
+  }
+  return path
+}
+
+// 폴더로 가는 URL (루트면 '/')
+function folderUrl(folderId) {
+  return folderId ? '/folder/' + folderId : '/'
+}
+
 function App() {
   const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
   const [folders, setFolders] = useState([])
-  const [folderPath, setFolderPath] = useState([]) // 현재 위치 경로(루트=빈 배열)
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null)
-  const [openBoard, setOpenBoard] = useState(null)
   const [items, setItems] = useState([])
-  const [adminPw, setAdminPw] = useState(null) // 관리자 모드면 편집 비번 보관
+  const [itemsBoardId, setItemsBoardId] = useState(null) // 지금 items가 어느 게시글 것인지
+  const [verifiedBoards, setVerifiedBoards] = useState(() => new Set()) // 입장 비번 통과한 게시글 id
+  const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
-  const [entryPrompt, setEntryPrompt] = useState(null) // 입장 비번 받을 board
   const [adminPrompt, setAdminPrompt] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
@@ -76,9 +104,27 @@ function App() {
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
 
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { folderId: routeFolderId, boardId: routeBoardId } = parseRoute(location.pathname)
+
   const configError = supabase ? '' : 'Supabase 연결 정보가 없습니다 (.env.local 확인).'
+
+  // ── 현재 위치는 URL에서 '파생'(별도 state로 들고 동기화하지 않음) ──
+  // 폴더 경로(브레드크럼): URL folderId에서 parent_id를 타고 올라가 재구성
+  const folderPath = buildFolderPath(folders, routeFolderId)
   const currentFolder = folderPath.length ? folderPath[folderPath.length - 1] : null
   const currentBoards = boards.filter((b) => (b.folder_id || null) === (currentFolder?.id || null))
+
+  // 열린 게시글: URL boardId로 결정. 입장 비번 게시글은 통과 전엔 잠금(openBoard=null)
+  const targetBoard = routeBoardId ? boards.find((b) => String(b.id) === routeBoardId) || null : null
+  const needsEntry = Boolean(
+    targetBoard && targetBoard.has_entry_password && !verifiedBoards.has(String(targetBoard.id)),
+  )
+  const openBoard = targetBoard && !needsEntry ? targetBoard : null
+  const openBoardId = openBoard ? openBoard.id : null
+  const boardReady = openBoardId != null && itemsBoardId === openBoardId // items까지 로드됨
+  const adminPw = admin && openBoard && admin.boardId === openBoard.id ? admin.pw : null
 
   useEffect(() => {
     if (!supabase) return
@@ -91,17 +137,40 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
-  // 실시간: 게시글 목록/메모 변경
+  // 없는/삭제된 게시글 URL로 들어오면 홈으로 (로드 끝난 뒤 판단)
+  useEffect(() => {
+    if (loading || !routeBoardId) return
+    if (!boards.some((b) => String(b.id) === routeBoardId)) {
+      navigate('/', { replace: true })
+    }
+  }, [loading, routeBoardId, boards, navigate])
+
+  // 열린 게시글의 항목 로드 (게시글이 바뀌면 새로 불러옴). setState는 비동기 콜백 안에서만
+  useEffect(() => {
+    if (!openBoardId || itemsBoardId === openBoardId) return
+    let cancelled = false
+    getBoardItems(openBoardId)
+      .then((its) => {
+        if (cancelled) return
+        setItems(its)
+        setItemsBoardId(openBoardId)
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [openBoardId, itemsBoardId])
+
+  // 실시간: 게시글 목록/메모 변경 (openBoard는 boards에서 파생되므로 자동 갱신)
   useEffect(() => {
     if (!supabase) return
     const ch = supabase
       .channel('boards-all')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, () => {
         getBoards()
-          .then((bs) => {
-            setBoards(bs)
-            setOpenBoard((ob) => (ob ? bs.find((b) => b.id === ob.id) || ob : ob))
-          })
+          .then((bs) => setBoards(bs))
           .catch(() => {})
       })
       .subscribe()
@@ -112,24 +181,24 @@ function App() {
 
   // 실시간: 열린 게시글의 항목 변경
   useEffect(() => {
-    if (!supabase || !openBoard) return
+    if (!supabase || !openBoardId) return
     const ch = supabase
-      .channel('items-' + openBoard.id)
+      .channel('items-' + openBoardId)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'items', filter: `board_id=eq.${openBoard.id}` },
+        { event: '*', schema: 'public', table: 'items', filter: `board_id=eq.${openBoardId}` },
         (payload) => setItems((prev) => applyItemChange(prev, payload)),
       )
       .subscribe()
     return () => {
       supabase.removeChannel(ch)
     }
-  }, [openBoard])
+  }, [openBoardId])
 
   // 실시간: 비고 작성 잠금(broadcast). 누가 어떤 항목 비고를 쓰는 중인지 공유
   useEffect(() => {
-    if (!supabase || !openBoard) return
-    const ch = supabase.channel('notelock-' + openBoard.id, {
+    if (!supabase || !openBoardId) return
+    const ch = supabase.channel('notelock-' + openBoardId, {
       config: { broadcast: { self: false } },
     })
     ch.on('broadcast', { event: 'lock' }, ({ payload }) => {
@@ -160,7 +229,7 @@ function App() {
       lockChanRef.current = null
       setNoteLocks({}) // 보드 떠날 때 잠금 표시 정리
     }
-  }, [openBoard])
+  }, [openBoardId])
 
   const sendNoteLock = useCallback(
     (itemId, locked) => {
@@ -181,12 +250,11 @@ function App() {
   function logout() {
     localStorage.removeItem('user')
     setUser(null)
-    setOpenBoard(null)
-    setFolderPath([])
     setEditing(false)
-    setAdminPw(null)
+    setAdmin(null)
     setShowPending(false)
     setShowChangePw(false)
+    navigate('/') // openBoard/folderPath는 URL에서 파생되므로 자동 정리
   }
 
   async function reloadBoards() {
@@ -222,31 +290,17 @@ function App() {
     }
   }
 
-  // 게시글 열기 (입장 비번 있으면 먼저 확인)
+  // 게시글 열기 → URL로 이동. 로드/입장 비번 게이트는 위 파생값·effect가 처리
   function tryOpen(board) {
-    if (board.has_entry_password) setEntryPrompt(board)
-    else openConfirmed(board)
+    navigate('/board/' + board.id)
   }
-  async function openConfirmed(board) {
-    setLoading(true)
-    setError('')
-    try {
-      setItems(await getBoardItems(board.id))
-      setOpenBoard(board)
-      setAdminPw(null)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // 입장 비번 통과 → 통과 목록에 추가하면 openBoard가 파생되어 열림
   async function submitEntry(pw) {
+    if (!targetBoard) return '게시글을 찾을 수 없습니다.'
     try {
-      const res = await verifyBoardEntry(entryPrompt.id, pw)
+      const res = await verifyBoardEntry(targetBoard.id, pw)
       if (!res.ok) return res.error || '실패'
-      const b = entryPrompt
-      setEntryPrompt(null)
-      await openConfirmed(b)
+      setVerifiedBoards((prev) => new Set(prev).add(String(targetBoard.id)))
       return null
     } catch (e) {
       return e.message
@@ -254,17 +308,16 @@ function App() {
   }
 
   function goBack() {
-    setOpenBoard(null)
-    setItems([])
-    setAdminPw(null)
+    // 원래 있던 폴더로. openBoard는 URL에서 파생되므로 navigate만 하면 정리됨
+    navigate(folderUrl(openBoard?.folder_id))
   }
 
-  // 관리자 모드 진입
+  // 관리자 모드 진입 (해당 게시글에서만 유효 — admin.boardId로 묶음)
   async function submitAdmin(pw) {
     try {
       const res = await verifyBoardAdmin(openBoard.id, pw)
       if (!res.ok) return res.error || '실패'
-      setAdminPw(pw)
+      setAdmin({ boardId: openBoard.id, pw })
       setAdminPrompt(false)
       return null
     } catch (e) {
@@ -309,22 +362,16 @@ function App() {
   async function handleSaved() {
     setEditing(false)
     try {
-      const fresh = await getBoards()
-      setBoards(fresh)
-      if (openBoard) {
-        const updated = fresh.find((b) => b.id === openBoard.id) || null
-        setOpenBoard(updated)
-        if (updated) setItems(await getBoardItems(updated.id))
-      }
+      setBoards(await getBoards()) // openBoard는 boards에서 파생되어 자동 갱신
+      if (openBoardId) setItems(await getBoardItems(openBoardId)) // 편집된 항목 다시 로드
     } catch (e) {
       setError(e.message)
     }
   }
   async function handleDeleted() {
+    const folderId = openBoard?.folder_id // 정리 전에 폴더 기억
     setEditing(false)
-    setOpenBoard(null)
-    setItems([])
-    setAdminPw(null)
+    navigate(folderUrl(folderId)) // openBoard는 URL에서 파생되므로 자동 정리
     await reloadBoards()
   }
   async function doReset() {
@@ -437,14 +484,19 @@ function App() {
         <PendingUsers token={user.token} onBack={() => setShowPending(false)} />
       )}
 
-      {!loading && !editing && !showPending && openBoard && (
+      {/* 게시글 진입했지만 항목 로드 전 */}
+      {!loading && !editing && !showPending && openBoard && !boardReady && (
+        <p className="muted">불러오는 중…</p>
+      )}
+
+      {!loading && !editing && !showPending && boardReady && (
         <Checklist
           board={openBoard}
           items={items}
           adminMode={Boolean(adminPw)}
           onBack={goBack}
           onEnterAdmin={() => setAdminPrompt(true)}
-          onExitAdmin={() => setAdminPw(null)}
+          onExitAdmin={() => setAdmin(null)}
           onEdit={openEdit}
           onReset={() => setConfirmReset(true)}
           onSetStatus={handleSetStatus}
@@ -455,16 +507,16 @@ function App() {
         />
       )}
 
-      {/* 폴더/게시글 화면 (루트 또는 현재 폴더) */}
-      {!loading && !editing && !showPending && !openBoard && (
+      {/* 폴더/게시글 목록 화면 (게시글을 보고 있지 않을 때만) */}
+      {!loading && !editing && !showPending && !routeBoardId && (
         <>
           {/* 경로(브레드크럼) — 조각을 누르면 그 폴더로 이동 */}
           <nav className="crumbs">
-            <button className="crumb" onClick={() => setFolderPath([])}>🏠 홈</button>
-            {folderPath.map((f, i) => (
+            <button className="crumb" onClick={() => navigate('/')}>🏠 홈</button>
+            {folderPath.map((f) => (
               <span className="crumb-wrap" key={f.id}>
                 <span className="crumb-sep">›</span>
-                <button className="crumb" onClick={() => setFolderPath(folderPath.slice(0, i + 1))}>
+                <button className="crumb" onClick={() => navigate(folderUrl(f.id))}>
                   {f.name}
                 </button>
               </span>
@@ -484,7 +536,7 @@ function App() {
                 (f.parent_id || null) === (currentFolder?.id || null) &&
                 (!f.is_private || f.owner === user.name),
             )}
-            onOpen={(f) => setFolderPath((p) => [...p, f])}
+            onOpen={(f) => navigate(folderUrl(f.id))}
             onNew={doCreateFolder}
             onDelete={(f) => setConfirmDeleteFolder(f)}
             canDelete={(f) =>
@@ -521,11 +573,11 @@ function App() {
         </>
       )}
 
-      {entryPrompt && (
+      {needsEntry && targetBoard && (
         <PasswordPrompt
-          title={`'${entryPrompt.title}' 입장 비밀번호`}
+          title={`'${targetBoard.title}' 입장 비밀번호`}
           onSubmit={submitEntry}
-          onCancel={() => setEntryPrompt(null)}
+          onCancel={() => navigate(folderUrl(targetBoard.folder_id))}
         />
       )}
       {adminPrompt && openBoard && (
