@@ -567,3 +567,14 @@ begin
     from public.client_error e order by e.created_at desc limit least(coalesce(p_limit, 50), 200);
 end; $$;
 grant execute on function public.list_client_errors(text,int) to anon, authenticated;
+
+-- ── 마이그레이션 추적(#2) ──
+-- 이 파일(schema_admin_password.sql) 전체 = '001_baseline'(지금까지의 모든 스키마).
+-- 앞으로의 변경은 supabase/migrations/002_*.sql 처럼 번호별 파일 한 번씩. (migrations/README.md)
+create table if not exists public.schema_migrations (
+  version    text primary key,
+  applied_at timestamptz not null default now()
+);
+alter table public.schema_migrations enable row level security;  -- anon 차단(메타데이터)
+insert into public.schema_migrations (version) values ('001_baseline')
+on conflict (version) do nothing;

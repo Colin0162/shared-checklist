@@ -5,7 +5,8 @@
 >
 > **두 가지 규칙만 기억:**
 > - **`src/`의 `.jsx`(화면)·`.css`(디자인)·`.js`(DB 호출)** 수정 → `git add . && git commit && git push` 하면 Vercel이 자동 배포.
-> - **`supabase/*.sql`(DB 구조/규칙)** 수정 → **Supabase 대시보드 → SQL Editor에서 RUN** 해야 반영. (push만으론 DB 안 바뀜)
+> - **DB 구조/규칙** 변경 → **Supabase 대시보드 → SQL Editor에서 RUN** 해야 반영(push만으론 DB 안 바뀜).
+>   새 변경은 **`supabase/migrations/`에 번호별 파일 하나씩**(한 번만 RUN) — 방법은 `supabase/migrations/README.md`.
 
 ---
 
@@ -41,7 +42,10 @@ src/
     └─ ConfirmModal.jsx ← '정말 삭제/초기화할까요?' 확인 모달
 
 supabase/
-    └─ schema_admin_password.sql ← 메인 스키마(사용자/세션/게시글/항목/폴더/템플릿/표/비번/계정/활동로그 RPC 전부)
+    ├─ schema_admin_password.sql ← 베이스라인 스키마 = '001'(지금까지의 전부). 새 DB는 이거 한 번 RUN
+    └─ migrations/               ← 앞으로의 DB 변경은 여기 번호별 파일 하나씩(한 번만 RUN)
+        ├─ README.md             ← 마이그레이션 방법(필독)
+        └─ _template.sql         ← 새 마이그레이션 만들 때 복사용 틀
 
 vercel.json            ← 배포 설정. /board/.. 같은 주소로 새로고침해도 404 안 나게(SPA 폴백)
 ```
