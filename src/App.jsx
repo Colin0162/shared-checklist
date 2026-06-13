@@ -364,7 +364,6 @@ function App() {
           onNoteLock={sendNoteLock}
           saveErrors={saveErrors}
           onRetry={retrySave}
-          token={user.token}
         />
       )}
 

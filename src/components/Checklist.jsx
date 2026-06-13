@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import Item from './Item'
 import TableView from './TableView'
-import ActivityLog from './ActivityLog'
 import { ddayLabel } from '../lib/constants'
 
 const isDone = (it, mode) => (mode === 'check' ? it.status === 'done' : Boolean(it.status))
@@ -45,11 +44,9 @@ function Checklist({
   onNoteLock,
   saveErrors,
   onRetry,
-  token,
 }) {
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
   const [assigneeFilter, setAssigneeFilter] = useState('')
-  const [showActivity, setShowActivity] = useState(false)
   const mode = board.mode
   const isTodo = mode === 'todo'
   const isTable = mode === 'table'
@@ -87,13 +84,6 @@ function Checklist({
               title="인쇄 / PDF로 저장"
             >
               🖨 인쇄
-            </button>
-            <button
-              className="btn btn-small"
-              onClick={() => setShowActivity(true)}
-              title="누가 언제 무엇을 체크/수정했는지"
-            >
-              📋 기록
             </button>
             {adminMode ? (
               <>
@@ -185,10 +175,6 @@ function Checklist({
             )
           })}
         </>
-      )}
-
-      {showActivity && (
-        <ActivityLog token={token} boardId={board.id} onClose={() => setShowActivity(false)} />
       )}
     </section>
   )

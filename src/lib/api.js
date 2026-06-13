@@ -35,17 +35,6 @@ export async function getBoardItems(boardId) {
   return data
 }
 
-// ── 활동 로그 (#3) ──
-export async function getBoardActivity(token, boardId, limit = 50) {
-  const { data, error } = await supabase.rpc('list_board_activity', {
-    p_token: token,
-    p_board_id: boardId,
-    p_limit: limit,
-  })
-  if (error) throw error
-  return data
-}
-
 // ── 에러 로깅(가벼운 버전) ──
 // 현재 로그인 토큰을 localStorage에서 직접 읽어, 사용자가 본 에러를 서버에 남긴다.
 function currentToken() {

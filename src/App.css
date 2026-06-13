@@ -872,51 +872,6 @@
   gap: 8px;
 }
 
-/* 활동 기록 모달(#3) — 누가·언제·무엇을 체크/비고 */
-.activity-modal {
-  max-width: 460px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-}
-.activity-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.activity-title {
-  margin: 0;
-  font-size: 17px;
-}
-.activity-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-}
-.activity-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 10px;
-  padding: 8px 2px;
-  border-bottom: 1px solid var(--border);
-  font-size: 14px;
-}
-.activity-when {
-  color: var(--muted);
-  font-size: 12px;
-  min-width: 88px;
-}
-.activity-who {
-  font-weight: 700;
-}
-.activity-act {
-  color: var(--accent);
-  font-weight: 600;
-}
-
 /* 최근 오류 로그 (계정 관리 화면) — 운영자가 사용자 에러 확인 */
 .error-log {
   margin-top: 22px;

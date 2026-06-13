@@ -164,6 +164,17 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
     setCategories((c) => c.filter((x) => x.key !== key))
     if (name) setRows((rs) => rs.map((r) => (r.group_name === name ? { ...r, group_name: '' } : r)))
   }
+  // 대항목 순서 바꾸기 (위/아래). 이 순서가 화면의 대항목 묶음 순서가 됨.
+  function moveCategory(key, dir) {
+    setCategories((c) => {
+      const i = c.findIndex((x) => x.key === key)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= c.length) return c
+      const copy = [...c]
+      ;[copy[i], copy[j]] = [copy[j], copy[i]]
+      return copy
+    })
+  }
 
   // ── 항목 조작 ──
   function addRow() {
@@ -473,6 +484,8 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
                 onChange={(e) => renameCategory(c.key, e.target.value)}
                 placeholder="대항목 이름"
               />
+              <button className="icon-btn" onClick={() => moveCategory(c.key, -1)} title="위로">↑</button>
+              <button className="icon-btn" onClick={() => moveCategory(c.key, 1)} title="아래로">↓</button>
               <button className="icon-btn" onClick={() => removeCategory(c.key)} title="삭제">✕</button>
             </li>
           ))}
