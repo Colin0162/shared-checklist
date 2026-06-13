@@ -10,15 +10,21 @@
   --muted: #837a6f; /* 흐린 글씨(설명·메타) */
   --border: #ebe4da; /* 테두리/구분선 (따뜻한 연갈) */
   --accent: #4f46e5; /* 강조색(버튼·링크·선택) 차분한 인디고 */
+  --accent-2: #6366f1; /* 강조 그라데이션용(살짝 밝은 인디고) */
+  --accent-strong: #4338ca; /* 강조 눌림/진한 */
   --accent-weak: #eceafe; /* 강조 연한 배경 */
   --done: #15a34a; /* 완료/체크 초록 */
+  --done-2: #22b455; /* 완료 그라데이션용 */
   --done-weak: #e7f4ea; /* 완료 연한 배경 */
   --danger: #d1453b; /* 삭제/경고 (따뜻한 빨강) */
 
   --radius: 14px;
   --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(70, 55, 40, 0.05), 0 2px 6px rgba(70, 55, 40, 0.06);
-  --shadow-lg: 0 14px 36px rgba(70, 55, 40, 0.16);
+  --shadow: 0 1px 2px rgba(70, 55, 40, 0.05), 0 1px 3px rgba(70, 55, 40, 0.05);
+  --shadow-md: 0 2px 5px rgba(70, 55, 40, 0.06), 0 8px 20px rgba(70, 55, 40, 0.09);
+  --shadow-lg: 0 18px 44px rgba(70, 55, 40, 0.22);
+  --ring: 0 0 0 3px var(--accent-weak); /* 포커스 링 */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   font-family: system-ui, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', sans-serif;
   color: var(--text);

@@ -3,6 +3,20 @@
    색은 index.css의 :root 변수로 관리. 여기는 구조/간격/모양.
    ============================================================ */
 
+/* ── 공통: 키보드 포커스 링 + 모션 줄이기 선호 존중 ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
 /* ── 헤더 ── */
 .app-header {
   text-align: center;
@@ -48,7 +62,7 @@
   justify-content: center;
   gap: 6px;
   min-height: 40px;
-  padding: 8px 15px;
+  padding: 8px 16px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--card);
@@ -57,35 +71,50 @@
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, transform 0.04s;
+  box-shadow: 0 1px 1px rgba(70, 55, 40, 0.04);
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease), transform 0.08s var(--ease);
 }
 .btn:hover {
-  border-color: #d3d7dd;
+  border-color: #d9d2c6;
+  box-shadow: var(--shadow);
 }
 .btn:active {
   transform: translateY(1px);
   background: #f1ece4;
+  box-shadow: none;
 }
 .btn:disabled {
   opacity: 0.5;
   cursor: default;
+  box-shadow: none;
 }
 .btn-primary {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
   border-color: var(--accent);
   color: #fff;
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.25), 0 3px 8px rgba(79, 70, 229, 0.2);
+}
+.btn-primary:hover {
+  border-color: var(--accent-strong);
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.28), 0 7px 18px rgba(79, 70, 229, 0.28);
 }
 .btn-primary:active {
-  background: #1d4ed8;
+  background: var(--accent-strong);
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.3);
 }
 .btn-danger {
   background: #fff;
   border-color: #f3c0c0;
   color: var(--danger);
 }
+.btn-danger:hover {
+  border-color: #e89a9a;
+  box-shadow: var(--shadow);
+}
 .btn-small {
   min-height: 32px;
-  padding: 5px 11px;
+  padding: 5px 12px;
   font-size: 13px;
 }
 
@@ -264,14 +293,18 @@
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  transition: border-color 0.12s, box-shadow 0.12s, transform 0.04s;
+  gap: 4px;
+  transition: border-color 0.15s var(--ease), box-shadow 0.2s var(--ease),
+    transform 0.12s var(--ease);
 }
 .board-card:hover {
-  border-color: #d3d7dd;
+  border-color: #ddd5c8;
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 .board-card:active {
-  transform: translateY(1px);
+  transform: translateY(0);
+  box-shadow: var(--shadow);
 }
 .board-title {
   font-size: 16px;
@@ -299,13 +332,14 @@
 }
 .dday {
   display: inline-block;
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
   color: #fff;
   font-size: 12px;
   font-weight: 700;
   border-radius: 999px;
-  padding: 2px 9px;
+  padding: 3px 10px;
   white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
 }
 .board-del {
   flex-shrink: 0;
@@ -323,8 +357,9 @@
   z-index: 20;
   background: var(--bg);
   margin: 0 -14px;
-  padding: 8px 14px 10px;
+  padding: 10px 14px 12px;
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 6px 14px -10px rgba(70, 55, 40, 0.25);
 }
 .checklist-head {
   display: flex;
@@ -341,9 +376,14 @@
   font-size: 18px;
   color: var(--text);
   cursor: pointer;
+  transition: background 0.12s var(--ease), border-color 0.12s var(--ease);
+}
+.back-btn:hover {
+  border-color: #d9d2c6;
+  background: #faf7f2;
 }
 .back-btn:active {
-  background: #f1ece4;
+  background: #ece6dd;
 }
 .board-heading {
   flex: 1;
@@ -370,23 +410,24 @@
   margin-top: 9px;
 }
 .progress-bar {
-  height: 10px;
-  background: #ece6dd;
+  height: 12px;
+  background: #e8e1d6;
   border-radius: 999px;
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(70, 55, 40, 0.08);
 }
 .progress-fill {
   height: 100%;
   width: 100%;
-  background: var(--done);
+  background: linear-gradient(180deg, var(--done-2), var(--done));
   transform-origin: left center;
   /* width 대신 transform으로 애니메이션 → GPU 가속, 버벅임 없음 */
-  transition: transform 0.3s ease;
+  transition: transform 0.4s var(--ease);
   will-change: transform;
 }
 .progress-text {
   display: block;
-  margin-top: 5px;
+  margin-top: 6px;
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
@@ -449,6 +490,8 @@
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease);
 }
 .item-body {
   display: flex;
@@ -469,7 +512,10 @@
   cursor: pointer;
 }
 .item-tap:active {
-  background: #f8f4ee;
+  background: #f3eee6;
+}
+.item-tap:active .check-box {
+  transform: scale(0.9);
 }
 .item.checked {
   background: var(--done-weak);
@@ -514,22 +560,24 @@
 /* 커스텀 체크박스 */
 .check-box {
   flex-shrink: 0;
-  width: 26px;
-  height: 26px;
+  width: 27px;
+  height: 27px;
   border: 2px solid #d8d0c4;
-  border-radius: 8px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: transparent;
   font-size: 16px;
   font-weight: 800;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease),
+    transform 0.12s var(--ease);
 }
 .check-box.on {
-  background: var(--done);
+  background: linear-gradient(180deg, var(--done-2), var(--done));
   border-color: var(--done);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(21, 163, 74, 0.3);
 }
 
 /* 상/중/하 */
@@ -548,14 +596,20 @@
   font-weight: 600;
   color: var(--text);
   cursor: pointer;
+  transition: background 0.12s var(--ease), border-color 0.12s var(--ease),
+    transform 0.08s var(--ease);
+}
+.rate-btn:hover {
+  border-color: #d9d2c6;
 }
 .rate-btn:active {
   transform: translateY(1px);
 }
 .rate-btn.active {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
   border-color: var(--accent);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
 }
 
 /* 비고 입력 */
@@ -793,9 +847,14 @@
   cursor: pointer;
   color: var(--text);
   font-size: 14px;
+  transition: background 0.12s var(--ease), border-color 0.12s var(--ease);
+}
+.icon-btn:hover {
+  border-color: #d9d2c6;
+  background: #faf7f2;
 }
 .icon-btn:active {
-  background: #f1ece4;
+  background: #ece6dd;
 }
 .editor-foot {
   display: flex;
@@ -846,20 +905,35 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.45);
+  background: rgba(33, 28, 23, 0.5);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
   z-index: 100;
+  animation: overlay-in 0.18s var(--ease);
 }
 .modal {
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  padding: 20px;
+  padding: 22px;
   max-width: 360px;
   width: 100%;
+  animation: modal-in 0.2s var(--ease);
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
 }
 .modal-msg {
   margin: 0 0 16px;
