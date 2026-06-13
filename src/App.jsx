@@ -82,6 +82,11 @@ function folderUrl(folderId) {
   return folderId ? '/folder/' + folderId : '/'
 }
 
+// 토큰 만료/무효(세션 30일 경과 등) 에러인지 — 맞으면 재로그인 유도
+function isAuthError(msg) {
+  return typeof msg === 'string' && msg.includes('로그인이 필요')
+}
+
 function App() {
   const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
@@ -89,6 +94,7 @@ function App() {
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null)
   const [items, setItems] = useState([])
   const [itemsBoardId, setItemsBoardId] = useState(null) // 지금 items가 어느 게시글 것인지
+  const [saveErrors, setSaveErrors] = useState({}) // { itemId: { kind:'status'|'note', value } } 저장 실패한 항목
   const [verifiedBoards, setVerifiedBoards] = useState(() => new Set()) // 입장 비번 통과한 게시글 id
   const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
@@ -247,7 +253,7 @@ function App() {
     localStorage.setItem('user', JSON.stringify(value))
     setUser(value)
   }
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem('user')
     setUser(null)
     setEditing(false)
@@ -255,7 +261,7 @@ function App() {
     setShowPending(false)
     setShowChangePw(false)
     navigate('/') // openBoard/folderPath는 URL에서 파생되므로 자동 정리
-  }
+  }, [navigate])
 
   async function reloadBoards() {
     try {
@@ -325,6 +331,27 @@ function App() {
     }
   }
 
+  // 저장 실패 처리: 만료면 재로그인 유도, 그 외엔 그 항목에 '저장 안 됨' 표시(재시도용)
+  const onSaveFail = useCallback(
+    (id, kind, value, e) => {
+      if (isAuthError(e?.message)) {
+        setError('로그인이 만료되었어요. 다시 로그인해 주세요.')
+        logout()
+        return
+      }
+      setSaveErrors((prev) => ({ ...prev, [id]: { kind, value } }))
+    },
+    [logout],
+  )
+  const clearSaveError = useCallback((id) => {
+    setSaveErrors((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }, [])
+
   // useCallback: 함수 신원 고정 → memo(Item)이 바뀐 항목만 다시 그림(체크 시 부드러움)
   const handleSetStatus = useCallback(
     async (id, status) => {
@@ -334,22 +361,33 @@ function App() {
       )
       try {
         await setItemStatus(user.token, id, status)
+        clearSaveError(id)
       } catch (e) {
-        setError(e.message)
+        onSaveFail(id, 'status', status, e)
       }
     },
-    [user],
+    [user, onSaveFail, clearSaveError],
   )
   const handleSetNote = useCallback(
     async (id, note) => {
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, note } : it)))
       try {
         await setItemNote(user.token, id, note)
+        clearSaveError(id)
       } catch (e) {
-        setError(e.message)
+        onSaveFail(id, 'note', note, e)
       }
     },
-    [user],
+    [user, onSaveFail, clearSaveError],
+  )
+  // 항목별 '↻ 다시' — 실패했던 값(pending)으로 그대로 재시도. 콜백은 고정(memo 유지)
+  const retrySave = useCallback(
+    (id, pending) => {
+      if (!pending) return
+      if (pending.kind === 'status') handleSetStatus(id, pending.value)
+      else handleSetNote(id, pending.value)
+    },
+    [handleSetStatus, handleSetNote],
   )
   function openNew() {
     setEditTarget(null)
@@ -504,6 +542,9 @@ function App() {
           noteLocks={noteLocks}
           myName={user.name}
           onNoteLock={sendNoteLock}
+          saveErrors={saveErrors}
+          onRetry={retrySave}
+          token={user.token}
         />
       )}
 

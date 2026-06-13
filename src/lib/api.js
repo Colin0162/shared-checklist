@@ -35,6 +35,17 @@ export async function getBoardItems(boardId) {
   return data
 }
 
+// ── 활동 로그 (#3) ──
+export async function getBoardActivity(token, boardId, limit = 50) {
+  const { data, error } = await supabase.rpc('list_board_activity', {
+    p_token: token,
+    p_board_id: boardId,
+    p_limit: limit,
+  })
+  if (error) throw error
+  return data
+}
+
 // ── 콘텐츠 쓰기 (직접, 로그인 사용자) ──
 // 체크/비고는 로그인 토큰으로 서버 RPC 호출 (체크한 사람은 서버가 토큰에서 결정)
 export async function setItemStatus(token, id, status) {

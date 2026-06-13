@@ -872,6 +872,79 @@
   gap: 8px;
 }
 
+/* 활동 기록 모달(#3) — 누가·언제·무엇을 체크/비고 */
+.activity-modal {
+  max-width: 460px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+.activity-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.activity-title {
+  margin: 0;
+  font-size: 17px;
+}
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+.activity-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.activity-when {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 88px;
+}
+.activity-who {
+  font-weight: 700;
+}
+.activity-act {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 저장 실패 표시 (인터넷 약할 때) — 항목 안에 작게 + 다시 시도 버튼 */
+.save-failed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 12px 8px;
+  font-size: 13px;
+  color: var(--danger);
+}
+.save-failed-text {
+  font-weight: 600;
+}
+.retry-btn {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  background: #fff;
+  border-radius: var(--radius-sm);
+  padding: 3px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 30px;
+}
+.retry-btn:active {
+  background: var(--danger);
+  color: #fff;
+}
+
 /* ============================================================
    인쇄 / PDF 저장 (브라우저 인쇄 → 'PDF로 저장' 가능)
    화면용 버튼·네비게이션은 숨기고, 체크리스트 내용만 깔끔하게.
@@ -883,15 +956,19 @@
   .toolbar,
   .head-actions,
   .back-btn,
+  .save-failed,
   .modal-overlay {
     display: none !important;
   }
+  html,
   body {
     background: #fff;
+    height: auto !important; /* 인쇄 시 빈 페이지 방지 */
   }
   #root {
     max-width: none;
     padding: 0;
+    min-height: 0 !important; /* 화면용 100svh가 빈 2페이지를 만들던 것 제거 */
   }
   .board-top {
     position: static !important;

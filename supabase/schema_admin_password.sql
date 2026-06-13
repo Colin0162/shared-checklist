@@ -26,13 +26,20 @@ alter table public.boards add column if not exists table_data jsonb not null def
 alter table public.users add column if not exists is_site_admin boolean not null default false;
 update public.users set is_site_admin = true where name = 'anrhks456';
 
--- 세션(사이트 관리자 작업 인증용 토큰)
+-- 세션(로그인 토큰)
 create table if not exists public.sessions (
   token      uuid primary key default gen_random_uuid(),
   user_id    uuid not null references public.users(id) on delete cascade,
   created_at timestamptz not null default now()
 );
 alter table public.sessions enable row level security;  -- anon 차단
+
+-- 세션 정리(#4): 30일 지난 토큰 삭제. 계정(users)은 그대로 → 30일 뒤에도 재로그인하면 새 토큰.
+-- (위 인증 함수들이 모두 'created_at > now() - 30일' 조건이라 30일 지난 토큰은 자동 무효)
+create or replace function public.cleanup_sessions()
+returns void language sql security definer set search_path = public as $$
+  delete from public.sessions where created_at < now() - interval '30 days';
+$$;
 
 -- 가입 승인제: status(pending/approved).
 -- ※ 주의: 예전엔 여기서 'delete from users'로 전체 삭제했었는데, 재RUN마다 계정이
@@ -84,6 +91,7 @@ begin
   if v_user.status <> 'approved' then
     return json_build_object('ok', false, 'error', '가입 승인 대기 중입니다. 강무관(필립보)에게 연락하세요.');
   end if;
+  perform public.cleanup_sessions();  -- 로그인 때마다 만료(30일) 토큰 정리
   insert into public.sessions (user_id) values (v_user.id) returning token into v_token;
   return json_build_object('ok', true, 'name', v_user.name, 'is_site_admin', v_user.is_site_admin, 'token', v_token);
 end; $$;
@@ -237,7 +245,7 @@ declare v_admin boolean;
 begin
   select u.is_site_admin into v_admin
   from public.sessions s join public.users u on u.id = s.user_id
-  where s.token::text = p_token;
+  where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if not coalesce(v_admin, false) then raise exception '사이트 관리자만 가능합니다.'; end if;
   delete from public.boards where id = p_board_id;
 end; $$;
@@ -248,7 +256,7 @@ grant execute on function public.site_delete_board(text,uuid) to anon, authentic
 create or replace function public._is_site_admin(p_token text)
 returns boolean language sql security definer set search_path = public as $$
   select coalesce((select u.is_site_admin from public.sessions s
-    join public.users u on u.id = s.user_id where s.token::text = p_token), false);
+    join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days'), false);
 $$;
 revoke all on function public._is_site_admin(text) from public;
 
@@ -313,7 +321,7 @@ create or replace function public.change_my_password(p_token text, p_old_pw text
 returns json language plpgsql security definer set search_path = public, extensions as $$
 declare v_user public.users;
 begin
-  select u.* into v_user from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  select u.* into v_user from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_user.id is null then return json_build_object('ok', false, 'error', '로그인이 필요합니다.'); end if;
   if v_user.pin_hash <> crypt(p_old_pw, v_user.pin_hash) then
     return json_build_object('ok', false, 'error', '현재 비밀번호가 올바르지 않습니다.');
@@ -328,30 +336,68 @@ grant execute on function public.change_my_password(text,text,text) to anon, aut
 
 -- ── 쓰기 잠금: 항목 체크/비고는 '로그인한 사람'만 (직접 쓰기 차단) ──
 -- 읽기(items_select_anon)는 그대로 열어둠 → 실시간 동기화 유지.
+
+-- 활동 로그(#3, 가벼운 버전): 누가·언제·무엇을 체크/비고 했는지 기록 (사고 추적·책임)
+create table if not exists public.activity_log (
+  id         bigint generated always as identity primary key,
+  board_id   uuid references public.boards(id) on delete cascade,
+  item_id    uuid,
+  user_name  text not null default '',
+  action     text not null default '',   -- '체크' | '해제' | '상/중/하' | '비고'
+  detail     text not null default '',   -- 항목 이름 등
+  created_at timestamptz not null default now()
+);
+alter table public.activity_log enable row level security;  -- anon 직접 접근 차단(조회는 RPC로만)
+create index if not exists activity_log_board_idx on public.activity_log (board_id, created_at desc);
+
 create or replace function public.check_item(p_token text, p_item_id uuid, p_status text)
 returns void language plpgsql security definer set search_path = public as $$
-declare v_name text;
+declare v_name text; v_label text; v_board uuid;
 begin
-  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   update public.items
     set status = p_status,
         checked_by = case when p_status <> '' then v_name else '' end,
         updated_at = now()
   where id = p_item_id;
+  -- 활동 기록 (항목 이름·소속 게시글 함께)
+  select label, board_id into v_label, v_board from public.items where id = p_item_id;
+  insert into public.activity_log (board_id, item_id, user_name, action, detail)
+  values (v_board, p_item_id, v_name,
+          case when p_status = '' then '해제' when p_status = 'done' then '체크' else p_status end,
+          coalesce(v_label, ''));
 end; $$;
 
 create or replace function public.set_note(p_token text, p_item_id uuid, p_note text)
 returns void language plpgsql security definer set search_path = public as $$
-declare v_name text;
+declare v_name text; v_label text; v_board uuid;
 begin
-  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   update public.items set note = p_note, updated_at = now() where id = p_item_id;
+  -- 활동 기록
+  select label, board_id into v_label, v_board from public.items where id = p_item_id;
+  insert into public.activity_log (board_id, item_id, user_name, action, detail)
+  values (v_board, p_item_id, v_name, '비고', coalesce(v_label, ''));
 end; $$;
 
 grant execute on function public.check_item(text,uuid,text) to anon, authenticated;
 grant execute on function public.set_note(text,uuid,text)   to anon, authenticated;
+
+-- 최근 활동 조회(로그인 사용자) — 게시글별 최근 기록 (기본 50, 최대 200)
+create or replace function public.list_board_activity(p_token text, p_board_id uuid, p_limit int)
+returns table(user_name text, action text, detail text, created_at timestamptz)
+language plpgsql security definer set search_path = public as $$
+declare v_name text;
+begin
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
+  if v_name is null then raise exception '로그인이 필요합니다.'; end if;
+  return query select a.user_name, a.action, a.detail, a.created_at
+    from public.activity_log a where a.board_id = p_board_id
+    order by a.created_at desc limit least(coalesce(p_limit, 50), 200);
+end; $$;
+grant execute on function public.list_board_activity(text,uuid,int) to anon, authenticated;
 
 -- 항목 직접 쓰기(비로그인 포함) 차단. 관리자 편집·체크/비고는 위 RPC가 서버권한으로 처리.
 -- ※ 만약 체크가 안 되면(긴급 롤백) 아래 한 줄을 실행:
@@ -391,7 +437,7 @@ create or replace function public.create_folder(p_token text, p_name text, p_is_
 returns uuid language plpgsql security definer set search_path = public as $$
 declare v_name text; v_id uuid;
 begin
-  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   if btrim(coalesce(p_name,'')) = '' then raise exception '폴더 이름을 입력하세요.'; end if;
   insert into public.folders (name, owner, is_private, parent_id)
@@ -406,7 +452,7 @@ returns void language plpgsql security definer set search_path = public as $$
 declare v_name text; v_admin boolean; v_owner text; v_priv boolean;
 begin
   select u.name, u.is_site_admin into v_name, v_admin
-  from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   -- 비어 있을 때만 삭제 (안의 게시글·하위폴더 먼저 정리)
   if exists (select 1 from public.boards where folder_id = p_folder_id) then
@@ -446,7 +492,7 @@ create or replace function public.save_template(p_token text, p_name text, p_mod
 returns uuid language plpgsql security definer set search_path = public as $$
 declare v_name text; v_id uuid;
 begin
-  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   if btrim(coalesce(p_name,'')) = '' then raise exception '템플릿 이름을 입력하세요.'; end if;
   insert into public.templates (name, mode, categories, items, table_data, owner)
@@ -461,7 +507,7 @@ returns void language plpgsql security definer set search_path = public as $$
 declare v_name text; v_admin boolean; v_owner text;
 begin
   select u.name, u.is_site_admin into v_name, v_admin
-  from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_name is null then raise exception '로그인이 필요합니다.'; end if;
   select owner into v_owner from public.templates where id = p_id;
   if v_owner <> v_name and not coalesce(v_admin, false) then
@@ -477,7 +523,7 @@ returns table(id uuid, name text, mode text, categories jsonb, items jsonb, tabl
 language plpgsql security definer set search_path = public as $$
 declare v_name text;
 begin
-  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token;
+  select u.name into v_name from public.sessions s join public.users u on u.id = s.user_id where s.token::text = p_token and s.created_at > now() - interval '30 days';
   if v_name is null then return; end if;
   return query select t.id, t.name, t.mode, t.categories, t.items, t.table_data
     from public.templates t where t.owner = v_name order by t.created_at;

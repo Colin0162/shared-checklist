@@ -22,7 +22,7 @@ function withLinks(text) {
 //   todo  : 텍스트만(링크 클릭)
 // 비고칸(item.show_note)이 켜진 항목은 아래에 입력칸.
 // props: item, mode, onSetStatus(id,상태), onSetNote(id,비고)
-function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = '', onNoteLock }) {
+function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = '', onNoteLock, saveError, onRetry }) {
   const checked = item.status === 'done'
   const [noteDraft, setNoteDraft] = useState(item.note ?? '')
   const [focused, setFocused] = useState(false)
@@ -55,6 +55,16 @@ function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = 
       {item.assignee && <span className="item-assignee">담당 {item.assignee}</span>}
       {item.status && item.checked_by && <span className="item-by">{item.checked_by}</span>}
     </span>
+  )
+
+  // 저장 실패 시 그 항목에 표시(인터넷 약할 때) — 누르면 실패했던 값으로 다시 저장
+  const retryUI = saveError && (
+    <div className="save-failed" role="status">
+      <span className="save-failed-text">⚠ 저장 안 됨</span>
+      <button type="button" className="retry-btn" onClick={() => onRetry && onRetry(item.id, saveError)}>
+        ↻ 다시
+      </button>
+    </div>
   )
 
   // 다른 사람이 이 비고를 쓰는 중이면 잠금(내가 입력 중일 땐 풀림)
@@ -98,6 +108,7 @@ function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = 
           </span>
         </button>
         {note}
+        {retryUI}
       </li>
     )
   }
@@ -120,6 +131,7 @@ function Item({ item, mode, onSetStatus, onSetNote, noteLockedBy = '', myName = 
         </div>
       </div>
       {note}
+      {retryUI}
     </li>
   )
 }
