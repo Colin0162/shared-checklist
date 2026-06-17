@@ -20,6 +20,7 @@ function FolderPanel({
   myName,
   isAdmin,
   messages,
+  chatError,
   onSend,
   onRemove,
   onLeave,
@@ -94,6 +95,7 @@ function FolderPanel({
         )}
 
         <div className="chat">
+          {chatError && <p className="error" style={{ margin: '0 0 6px' }}>오류: {chatError}</p>}
           <div className="chat-messages">
             {normal.length === 0 ? (
               <p className="muted chat-empty">아직 메시지가 없습니다.</p>

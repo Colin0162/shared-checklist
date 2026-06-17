@@ -142,8 +142,12 @@ function App() {
     useBoardItems(openBoardId, user, logout, reportError)
   const { noteLocks, sendNoteLock } = useNoteLocks(openBoardId, user?.name)
 
-  // 공유 폴더 채팅 (현재 위치가 공유 폴더일 때만 활성). 패널은 그 폴더 id가 열렸을 때만 표시
-  const chatFolder = currentFolder && currentFolder.visibility === 'shared' ? currentFolder : null
+  // 공유 폴더 채팅: 폴더 화면이든 '그 폴더의 게시글을 보는 중'이든 같은 폴더면 유지
+  //   (게시글 들어갔다 나와도 folderId가 같아 메시지를 다시 비우지 않음)
+  const contextFolder = openBoard
+    ? folders.find((f) => f.id === openBoard.folder_id) || null
+    : currentFolder
+  const chatFolder = contextFolder && contextFolder.visibility === 'shared' ? contextFolder : null
   const chat = useFolderChat(chatFolder?.id, user?.token, Boolean(chatFolder))
   const chatOpen = Boolean(chatFolder && chatOpenFor === chatFolder.id)
 
@@ -583,6 +587,7 @@ function App() {
           myName={user.name}
           isAdmin={chatFolder.my_role === 'admin'}
           messages={chat.messages}
+          chatError={chat.chatError}
           onSend={chat.send}
           onRemove={chat.remove}
           onLeave={(f) => setConfirmLeaveFolder(f)}
