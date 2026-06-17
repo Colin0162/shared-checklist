@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { listFolderMembers, kickMember, transferFolderAdmin } from '../lib/api'
 import { displayName } from '../lib/constants'
 
-// 공유 폴더 참여자 목록 + (관리자면) 내보내기·관리자 넘기기.
-// props: token, folder, myName, isAdmin, onChanged(폴더 목록 갱신용), onClose
-function FolderMembers({ token, folder, myName, isAdmin, onChanged, onClose }) {
+// 공유 폴더 참여자 패널 — 폴더 안 상단에 '항상' 표시(모달 아님).
+//   관리자면 각 참여자 옆에 관리자 넘기기·내보내기.
+// props: token, folder, myName, isAdmin, onChanged(권한/구성 바뀌면 폴더 다시 로드)
+function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
   const [members, setMembers] = useState([])
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
@@ -22,27 +23,13 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged, onClose }) {
     load()
   }, [load])
 
-  async function kick(m) {
+  async function act(fn) {
     setBusy(true)
     setErr('')
     try {
-      await kickMember(token, folder.id, m.user_id)
+      await fn()
       await load()
-      onChanged?.()
-    } catch (e) {
-      setErr(e.message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function transfer(m) {
-    setBusy(true)
-    setErr('')
-    try {
-      await transferFolderAdmin(token, folder.id, m.user_id)
-      await load()
-      onChanged?.() // 내 권한(my_role)이 바뀌므로 폴더 목록 다시 로드
+      onChanged?.() // 관리자 넘기면 내 권한(my_role)이 바뀌므로 폴더 목록도 갱신
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -51,35 +38,38 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <p className="modal-msg">‘{folder.name}’ 참여자</p>
-        {err && <p className="error" style={{ marginTop: 8 }}>오류: {err}</p>}
-        <ul className="member-list">
-          {members.map((m) => (
-            <li key={m.user_id} className="member-row">
-              <span className="member-name">
-                {displayName(m.name)}
-                {m.role === 'admin' && ' (관리자)'}
-                {m.name === myName && ' · 나'}
+    <div className="member-panel">
+      <h3 className="section-title" style={{ marginTop: 0 }}>👥 참여자 ({members.length})</h3>
+      {err && <p className="error">오류: {err}</p>}
+      <ul className="member-list">
+        {members.map((m) => (
+          <li key={m.user_id} className="member-row">
+            <span className="member-name">
+              {displayName(m.name)}
+              {m.role === 'admin' && ' (관리자)'}
+              {m.name === myName && ' · 나'}
+            </span>
+            {isAdmin && m.role !== 'admin' && (
+              <span className="member-actions">
+                <button
+                  className="btn btn-small"
+                  disabled={busy}
+                  onClick={() => act(() => transferFolderAdmin(token, folder.id, m.user_id))}
+                >
+                  관리자 넘기기
+                </button>
+                <button
+                  className="btn btn-danger btn-small"
+                  disabled={busy}
+                  onClick={() => act(() => kickMember(token, folder.id, m.user_id))}
+                >
+                  내보내기
+                </button>
               </span>
-              {isAdmin && m.role !== 'admin' && (
-                <span className="member-actions">
-                  <button className="btn btn-small" disabled={busy} onClick={() => transfer(m)}>
-                    관리자 넘기기
-                  </button>
-                  <button className="btn btn-danger btn-small" disabled={busy} onClick={() => kick(m)}>
-                    내보내기
-                  </button>
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-        <div className="modal-actions" style={{ marginTop: 12 }}>
-          <button className="btn" onClick={onClose}>닫기</button>
-        </div>
-      </div>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

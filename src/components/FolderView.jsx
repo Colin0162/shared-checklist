@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import FolderList from './FolderList'
+import FolderMembers from './FolderMembers'
 import BoardList from './BoardList'
 
 // 폴더/게시글 목록 화면.
 //   홈(최상위)에서는 폴더를 공유/개인/공개로 분류해 보여주고, '공유 폴더 참여' 입력을 제공.
-//   폴더 안에서는 하위 폴더 + 게시글.
+//   공유 폴더 안에서는 상단에 참여자 패널(항상 표시) + 나가기/암호변경.
 //   가시성 필터는 서버(RPC)가 끝냄 → folders/boards에는 '내가 볼 수 있는 것'만 들어온다.
 // props: user, folders, boards, folderPath, currentFolder, currentBoards,
 //        onGoHome, onGoFolder(id), onNewFolder(name), onJoinFolder, onShareFolder(f),
-//        onShowMembers(f), onLeaveFolder(f), onDeleteFolder(f),
+//        onLeaveFolder(f), onMembersChanged, onDeleteFolder(f),
 //        onShowPending, onNewBoard, onOpenBoard(b), onDeleteBoard(b)
 function FolderView({
   user,
@@ -22,8 +23,8 @@ function FolderView({
   onNewFolder,
   onJoinFolder,
   onShareFolder,
-  onShowMembers,
   onLeaveFolder,
+  onMembersChanged,
   onDeleteFolder,
   onShowPending,
   onNewBoard,
@@ -42,11 +43,8 @@ function FolderView({
   const hasChildren = (id) => folders.some((c) => c.parent_id === id)
   const hasBoards = (id) => boards.some((b) => b.folder_id === id)
 
-  // 공유 버튼: 최상위 폴더만 / 내 개인 폴더이거나 내가 관리자인 공유 폴더
-  const canShare = (f) =>
-    !f.parent_id &&
-    ((f.visibility === 'private' && f.owner === user.name) ||
-      (f.visibility === 'shared' && f.my_role === 'admin'))
+  // 공유 버튼: 내 개인 최상위 폴더만(공유 폴더의 암호 변경은 폴더 안 패널에서)
+  const canShare = (f) => !f.parent_id && f.visibility === 'private' && f.owner === user.name
   // 삭제 버튼: 빈 폴더만 / 종류별 권한
   const canDelete = (f) => {
     if (hasChildren(f.id) || hasBoards(f.id)) return false
@@ -58,8 +56,6 @@ function FolderView({
   const listProps = {
     onOpen: (f) => onGoFolder(f.id),
     onShare: onShareFolder,
-    onMembers: onShowMembers,
-    onLeave: onLeaveFolder,
     onDelete: onDeleteFolder,
     canShare,
     canDelete,
@@ -88,6 +84,31 @@ function FolderView({
       {user.is_site_admin && atHome && (
         <div className="list-head">
           <button className="btn" onClick={onShowPending}>계정 관리</button>
+        </div>
+      )}
+
+      {/* 공유 폴더 안: 참여자 패널(항상) + 나가기/암호변경 */}
+      {currentFolder?.visibility === 'shared' && (
+        <div className="shared-panel">
+          <FolderMembers
+            token={user.token}
+            folder={currentFolder}
+            myName={user.name}
+            isAdmin={currentFolder.my_role === 'admin'}
+            onChanged={onMembersChanged}
+          />
+          <div className="shared-panel-actions">
+            {currentFolder.my_role === 'admin' && (
+              <button className="btn btn-small" onClick={() => onShareFolder(currentFolder)}>
+                암호 변경
+              </button>
+            )}
+            {currentFolder.my_role === 'member' && (
+              <button className="btn btn-danger btn-small" onClick={() => onLeaveFolder(currentFolder)}>
+                이 폴더에서 나가기
+              </button>
+            )}
+          </div>
         </div>
       )}
 

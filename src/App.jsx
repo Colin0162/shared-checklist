@@ -31,7 +31,6 @@ import ConfirmModal from './components/ConfirmModal'
 import Login from './components/Login'
 import PasswordPrompt from './components/PasswordPrompt'
 import PendingUsers from './components/PendingUsers'
-import FolderMembers from './components/FolderMembers'
 import Guide from './components/Guide'
 import ChangePassword from './components/ChangePassword'
 
@@ -79,7 +78,7 @@ function App() {
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null)
   const [shareTarget, setShareTarget] = useState(null) // 공유 전환/암호변경 대상 폴더
   const [showJoin, setShowJoin] = useState(false) // 공유 폴더 참여(암호 입력) 모달
-  const [membersTarget, setMembersTarget] = useState(null) // 참여자 보기 대상 폴더
+  const [confirmLeaveFolder, setConfirmLeaveFolder] = useState(null) // 나가기 재확인 대상 폴더
   const [verifiedBoards, setVerifiedBoards] = useState(() => new Set()) // 입장 비번 통과한 게시글 id
   const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
@@ -244,13 +243,16 @@ function App() {
       return e.message
     }
   }
-  // 공유 폴더에서 나가기
-  async function doLeaveFolder(folder) {
+  // 공유 폴더에서 나가기 (재확인 모달의 확인을 거쳐 실행)
+  async function doLeaveFolder() {
     try {
-      await leaveFolder(user.token, folder.id)
+      await leaveFolder(user.token, confirmLeaveFolder.id)
       await reloadFoldersAndBoards()
+      navigate('/') // 나간 폴더 안에 있으면 안 되므로 홈으로
     } catch (e) {
       reportError(e.message)
+    } finally {
+      setConfirmLeaveFolder(null)
     }
   }
 
@@ -433,8 +435,8 @@ function App() {
           onNewFolder={doCreateFolder}
           onJoinFolder={() => setShowJoin(true)}
           onShareFolder={(f) => setShareTarget(f)}
-          onShowMembers={(f) => setMembersTarget(f)}
-          onLeaveFolder={doLeaveFolder}
+          onLeaveFolder={(f) => setConfirmLeaveFolder(f)}
+          onMembersChanged={reloadFolders}
           onDeleteFolder={(f) => setConfirmDeleteFolder(f)}
           onShowPending={() => setShowPending(true)}
           onNewBoard={openNew}
@@ -499,14 +501,12 @@ function App() {
           onCancel={() => setShowJoin(false)}
         />
       )}
-      {membersTarget && (
-        <FolderMembers
-          token={user.token}
-          folder={membersTarget}
-          myName={user.name}
-          isAdmin={membersTarget.my_role === 'admin'}
-          onChanged={reloadFolders}
-          onClose={() => setMembersTarget(null)}
+      {confirmLeaveFolder && (
+        <ConfirmModal
+          message={`'${confirmLeaveFolder.name}' 폴더에서 나갈까요? 다시 들어오려면 암호가 필요합니다.`}
+          confirmLabel="나가기"
+          onConfirm={doLeaveFolder}
+          onCancel={() => setConfirmLeaveFolder(null)}
         />
       )}
     </div>

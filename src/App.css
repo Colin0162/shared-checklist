@@ -311,6 +311,21 @@
   display: flex;
   gap: 6px;
 }
+/* 공유 폴더 안 상단 패널: 참여자 명단(항상) + 나가기/암호변경 */
+.shared-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.shared-panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
 
 .board-list {
   list-style: none;
