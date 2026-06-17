@@ -119,6 +119,16 @@ export async function verifyBoardEntry(boardId, pw) {
   if (error) throw error
   return data
 }
+// 입장 비밀번호 추가/변경/삭제 (빈 문자열이면 삭제=전체 공개). 편집비번(adminPw)로 인증.
+export async function setEntryPassword(token, boardId, adminPw, newEntry) {
+  const { error } = await supabase.rpc('set_entry_password', {
+    p_token: token,
+    p_board_id: boardId,
+    p_admin_pw: adminPw,
+    p_new_entry: newEntry,
+  })
+  if (error) throw error
+}
 
 // ── 폴더 (공유 모델) ──
 // 보이는 폴더만: 공개(기본) + 내 개인 + 내가 참여한 공유. (서버 RPC가 걸러서 내려줌)

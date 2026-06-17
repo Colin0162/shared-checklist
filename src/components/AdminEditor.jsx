@@ -6,6 +6,7 @@ import {
   getTemplates,
   saveTemplate,
   deleteTemplate,
+  setEntryPassword,
 } from '../lib/api'
 import ConfirmModal from './ConfirmModal'
 
@@ -49,6 +50,32 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // 편집 화면 전용: 입장 비밀번호 추가/변경/삭제
+  const [entryEditMode, setEntryEditMode] = useState(board?.has_entry_password ? 'password' : 'public')
+  const [entryEditPw, setEntryEditPw] = useState('')
+  const [showEntryEdit, setShowEntryEdit] = useState(false)
+  const [entryBusy, setEntryBusy] = useState(false)
+  const [entryMsg, setEntryMsg] = useState('')
+
+  async function applyEntryPw() {
+    setEntryMsg('')
+    if (entryEditMode === 'password' && !entryEditPw.trim()) {
+      setEntryMsg('새 입장 비밀번호를 입력하세요.')
+      return
+    }
+    setEntryBusy(true)
+    try {
+      const entry = entryEditMode === 'password' ? entryEditPw.trim() : ''
+      await setEntryPassword(token, board.id, adminPw, entry)
+      setEntryMsg(entry ? '입장 비밀번호를 적용했습니다.' : '전체 공개로 바꿨습니다(입장 비번 없음).')
+      setEntryEditPw('')
+    } catch (e) {
+      setEntryMsg('오류: ' + e.message)
+    } finally {
+      setEntryBusy(false)
+    }
+  }
 
   // 템플릿
   const [templates, setTemplates] = useState([])
@@ -323,6 +350,55 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
           </label>
         </div>
       </div>
+
+      {!isNew && (
+        <div className="field">
+          <span className="field-label">입장 비밀번호 (이 게시글에 들어올 때)</span>
+          <div className="radio-row">
+            <label>
+              <input
+                type="radio"
+                name="entry-edit"
+                checked={entryEditMode === 'public'}
+                onChange={() => setEntryEditMode('public')}
+              />
+              전체 공개
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="entry-edit"
+                checked={entryEditMode === 'password'}
+                onChange={() => setEntryEditMode('password')}
+              />
+              비밀번호 입장
+            </label>
+          </div>
+          {entryEditMode === 'password' && (
+            <div className="pw-field" style={{ marginTop: 8 }}>
+              <input
+                className="text-input"
+                type={showEntryEdit ? 'text' : 'password'}
+                value={entryEditPw}
+                onChange={(e) => setEntryEditPw(e.target.value)}
+                placeholder={board?.has_entry_password ? '새 입장 비밀번호' : '입장 비밀번호'}
+              />
+              <button
+                type="button"
+                className="pw-eye"
+                onClick={() => setShowEntryEdit((v) => !v)}
+                title={showEntryEdit ? '숨기기' : '보기'}
+              >
+                {showEntryEdit ? '🙈' : '👁'}
+              </button>
+            </div>
+          )}
+          <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button className="btn" onClick={applyEntryPw} disabled={entryBusy}>입장 비밀번호 적용</button>
+            {entryMsg && <span className="row-note">{entryMsg}</span>}
+          </div>
+        </div>
+      )}
 
       {isNew && templates.length > 0 && (
         <div className="field">

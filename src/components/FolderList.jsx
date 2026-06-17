@@ -17,7 +17,9 @@ function FolderList({ folders, onOpen, onShare, onDelete, canShare, canDelete })
   return (
     <ul className="board-list">
       {folders.map((f) => {
-        const v = VIS[f.visibility] || VIS.private
+        // 공유 폴더의 하위 폴더도 '공유'로 보이게 — 최상위 조상(root_visibility) 기준으로 표시
+        const vis = f.root_visibility || f.visibility
+        const v = VIS[vis] || VIS.private
         return (
           <li key={f.id} className="board-row">
             <button className="board-card" onClick={() => onOpen(f)}>
@@ -26,8 +28,8 @@ function FolderList({ folders, onOpen, onShare, onDelete, canShare, canDelete })
               </span>
               <span className="board-meta">
                 {v.label}
-                {f.visibility === 'shared' && f.my_role === 'admin' && ' · 내가 관리자'}
-                {f.visibility === 'private' && f.owner && ` · ${displayName(f.owner)}`}
+                {vis === 'shared' && f.my_role === 'admin' && ' · 내가 관리자'}
+                {vis === 'private' && f.owner && ` · ${displayName(f.owner)}`}
               </span>
             </button>
             <div className="folder-actions">
