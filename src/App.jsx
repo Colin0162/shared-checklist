@@ -217,11 +217,15 @@ function App() {
       setConfirmDeleteFolder(null)
     }
   }
+  // 폴더 가시성이 바뀌면(참여/나가기/공유 전환) 보이는 게시글도 달라지므로 둘 다 다시 로드
+  async function reloadFoldersAndBoards() {
+    await Promise.all([reloadFolders(), reloadBoards()])
+  }
   // 공유 전환 / 암호 변경 (PasswordPrompt: 성공 시 null, 실패 시 에러문자열)
   async function doShareFolder(pw) {
     try {
       await shareFolder(user.token, shareTarget.id, pw)
-      await reloadFolders()
+      await reloadFoldersAndBoards()
       setShareTarget(null)
       return null
     } catch (e) {
@@ -233,7 +237,7 @@ function App() {
     try {
       const res = await joinFolder(user.token, pw)
       if (!res.ok) return res.error || '참여하지 못했습니다.'
-      await reloadFolders()
+      await reloadFoldersAndBoards()
       setShowJoin(false)
       return null
     } catch (e) {
@@ -244,7 +248,7 @@ function App() {
   async function doLeaveFolder(folder) {
     try {
       await leaveFolder(user.token, folder.id)
-      await reloadFolders()
+      await reloadFoldersAndBoards()
     } catch (e) {
       reportError(e.message)
     }
