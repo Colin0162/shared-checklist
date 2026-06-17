@@ -490,16 +490,40 @@
   max-height: 50vh;
   overflow-y: auto;
 }
+.move-list li {
+  margin-bottom: 6px;
+}
 .move-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
   border-radius: 8px;
   cursor: pointer;
+  text-align: left;
+  font-size: 15px;
 }
-.move-row:hover {
+.move-row:hover:not(:disabled) {
   background: #f1f0ec;
+}
+.move-row:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.move-into {
+  color: var(--muted);
+}
+.move-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 6px 0 10px;
+  font-size: 13px;
 }
 
 .board-list {

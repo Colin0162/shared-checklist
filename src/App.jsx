@@ -76,32 +76,6 @@ function folderUrl(folderId) {
   return folderId ? '/folder/' + folderId : '/'
 }
 
-// 이동 모달용: 폴더 들여쓰기 깊이(조상 수)
-function folderDepth(folders, id) {
-  const byId = new Map(folders.map((f) => [String(f.id), f]))
-  let d = 0
-  let cur = byId.get(String(id))
-  const seen = new Set()
-  while (cur && cur.parent_id && byId.has(String(cur.parent_id)) && !seen.has(String(cur.id))) {
-    seen.add(String(cur.id))
-    d++
-    cur = byId.get(String(cur.parent_id))
-  }
-  return d
-}
-// candidate가 ancestor(자기 포함)의 후손인지 — 폴더 이동 후보에서 자기/후손 제외용
-function isDescendant(folders, candidateId, ancestorId) {
-  const byId = new Map(folders.map((f) => [String(f.id), f]))
-  let cur = byId.get(String(candidateId))
-  const seen = new Set()
-  while (cur && !seen.has(String(cur.id))) {
-    if (String(cur.id) === String(ancestorId)) return true
-    seen.add(String(cur.id))
-    cur = cur.parent_id ? byId.get(String(cur.parent_id)) : null
-  }
-  return false
-}
-
 function App() {
   const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
@@ -571,9 +545,9 @@ function App() {
       )}
       {moveBoardTarget && (
         <MoveModal
-          title={`'${moveBoardTarget.title}'을(를) 어느 폴더로 옮길까요?`}
-          candidates={folders.map((f) => ({ id: f.id, name: f.name, depth: folderDepth(folders, f.id) }))}
-          allowHome={false}
+          title={`'${moveBoardTarget.title}'을(를) 어디로 옮길까요?`}
+          folders={folders}
+          kind="board"
           onMove={doMoveBoard}
           onCancel={() => setMoveBoardTarget(null)}
         />
@@ -581,10 +555,9 @@ function App() {
       {moveFolderTarget && (
         <MoveModal
           title={`'${moveFolderTarget.name}' 폴더를 어디로 옮길까요?`}
-          candidates={folders
-            .filter((f) => !isDescendant(folders, f.id, moveFolderTarget.id))
-            .map((f) => ({ id: f.id, name: f.name, depth: folderDepth(folders, f.id) }))}
-          allowHome
+          folders={folders}
+          kind="folder"
+          excludeId={moveFolderTarget.id}
           onMove={doMoveFolder}
           onCancel={() => setMoveFolderTarget(null)}
         />
