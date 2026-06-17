@@ -23,6 +23,7 @@ import {
 } from './lib/api'
 import { useBoardItems } from './hooks/useBoardItems'
 import { useNoteLocks } from './hooks/useNoteLocks'
+import { useFolderChat } from './hooks/useFolderChat'
 import AppHeader from './components/AppHeader'
 import FolderView from './components/FolderView'
 import Checklist from './components/Checklist'
@@ -31,6 +32,7 @@ import ConfirmModal from './components/ConfirmModal'
 import Login from './components/Login'
 import PasswordPrompt from './components/PasswordPrompt'
 import PendingUsers from './components/PendingUsers'
+import FolderPanel from './components/FolderPanel'
 import Guide from './components/Guide'
 import ChangePassword from './components/ChangePassword'
 
@@ -79,6 +81,7 @@ function App() {
   const [shareTarget, setShareTarget] = useState(null) // 공유 전환/암호변경 대상 폴더
   const [showJoin, setShowJoin] = useState(false) // 공유 폴더 참여(암호 입력) 모달
   const [confirmLeaveFolder, setConfirmLeaveFolder] = useState(null) // 나가기 재확인 대상 폴더
+  const [chatOpenFor, setChatOpenFor] = useState(null) // 채팅 패널이 열린 폴더 id
   const [verifiedBoards, setVerifiedBoards] = useState(() => new Set()) // 입장 비번 통과한 게시글 id
   const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
@@ -133,6 +136,11 @@ function App() {
   const { items, setItems, boardReady, saveErrors, handleSetStatus, handleSetNote, retrySave } =
     useBoardItems(openBoardId, user, logout, reportError)
   const { noteLocks, sendNoteLock } = useNoteLocks(openBoardId, user?.name)
+
+  // 공유 폴더 채팅 (현재 위치가 공유 폴더일 때만 활성). 패널은 그 폴더 id가 열렸을 때만 표시
+  const chatFolder = currentFolder && currentFolder.visibility === 'shared' ? currentFolder : null
+  const chat = useFolderChat(chatFolder?.id, user?.token, Boolean(chatFolder))
+  const chatOpen = Boolean(chatFolder && chatOpenFor === chatFolder.id)
 
   // 보이는 폴더/게시글은 토큰에 따라 달라지므로 로그인(토큰 변경) 때 다시 로드
   useEffect(() => {
@@ -435,8 +443,6 @@ function App() {
           onNewFolder={doCreateFolder}
           onJoinFolder={() => setShowJoin(true)}
           onShareFolder={(f) => setShareTarget(f)}
-          onLeaveFolder={(f) => setConfirmLeaveFolder(f)}
-          onMembersChanged={reloadFolders}
           onDeleteFolder={(f) => setConfirmDeleteFolder(f)}
           onShowPending={() => setShowPending(true)}
           onNewBoard={openNew}
@@ -507,6 +513,35 @@ function App() {
           confirmLabel="나가기"
           onConfirm={doLeaveFolder}
           onCancel={() => setConfirmLeaveFolder(null)}
+        />
+      )}
+
+      {/* 공유 폴더 채팅: 아이콘(💬) → 누르면 패널(데스크톱 왼쪽 / 모바일 드로어) */}
+      {chatFolder && !editing && !chatOpen && (
+        <button
+          className="chat-fab"
+          onClick={() => {
+            setChatOpenFor(chatFolder.id)
+            chat.markRead()
+          }}
+          title="참여자 · 채팅"
+        >
+          💬{chat.unread && <span className="chat-fab-badge" />}
+        </button>
+      )}
+      {chatFolder && !editing && chatOpen && (
+        <FolderPanel
+          token={user.token}
+          folder={chatFolder}
+          myName={user.name}
+          isAdmin={chatFolder.my_role === 'admin'}
+          messages={chat.messages}
+          onSend={chat.send}
+          onRemove={chat.remove}
+          onLeave={(f) => setConfirmLeaveFolder(f)}
+          onShare={(f) => setShareTarget(f)}
+          onMembersChanged={reloadFolders}
+          onClose={() => setChatOpenFor(null)}
         />
       )}
     </div>

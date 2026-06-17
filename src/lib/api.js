@@ -204,6 +204,29 @@ export async function transferFolderAdmin(token, folderId, userId) {
   if (error) throw error
 }
 
+// ── 공유 폴더 채팅 ──
+export async function listMessages(token, folderId, limit = 200) {
+  const { data, error } = await supabase.rpc('list_messages', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_limit: limit,
+  })
+  if (error) throw error
+  return data
+}
+export async function sendMessage(token, folderId, content) {
+  const { error } = await supabase.rpc('send_message', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_content: content,
+  })
+  if (error) throw error
+}
+export async function deleteMessage(token, messageId) {
+  const { error } = await supabase.rpc('delete_message', { p_token: token, p_message_id: messageId })
+  if (error) throw error
+}
+
 // ── 템플릿 (#1) ──
 export async function getTemplates(token) {
   // 본인 템플릿만 (개인용)

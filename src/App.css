@@ -327,6 +327,161 @@
   flex-wrap: wrap;
 }
 
+/* ── 채팅 아이콘(FAB) + 알림 점 ── */
+.chat-fab {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow-md);
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s var(--ease);
+}
+.chat-fab:hover {
+  transform: translateY(-2px);
+}
+.chat-fab-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #e11d48;
+  border: 2px solid #fff;
+}
+
+/* ── 채팅+참여자 패널: 데스크톱=왼쪽 사이드 / 모바일=드로어 ── */
+.panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+.folder-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 360px;
+  max-width: 90vw;
+  height: 100vh;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  overflow-y: auto;
+}
+.folder-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.folder-panel-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+.folder-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+/* 데스크톱: 폴더 영역은 그대로 조작 가능하게 backdrop은 클릭 통과 */
+@media (min-width: 641px) {
+  .panel-backdrop {
+    pointer-events: none;
+    background: transparent;
+  }
+}
+@media (max-width: 640px) {
+  .panel-backdrop {
+    background: rgba(0, 0, 0, 0.4);
+  }
+  .folder-panel {
+    width: 92vw;
+  }
+}
+
+/* ── 채팅 ── */
+.chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 220px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+.chat-empty {
+  margin: auto;
+}
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+}
+.chat-msg.mine {
+  align-items: flex-end;
+}
+.chat-msg-meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.chat-author {
+  font-weight: 600;
+}
+.chat-del {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 0 2px;
+}
+.chat-bubble {
+  background: #f1f0ec;
+  border-radius: 12px;
+  padding: 8px 12px;
+  max-width: 85%;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chat-msg.mine .chat-bubble {
+  background: #dbe4ff;
+}
+.chat-input {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chat-input textarea {
+  flex: 1;
+  resize: none;
+}
+
 .board-list {
   list-style: none;
   margin: 0;

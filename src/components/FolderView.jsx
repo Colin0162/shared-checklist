@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import FolderList from './FolderList'
-import FolderMembers from './FolderMembers'
 import BoardList from './BoardList'
 
 // 폴더/게시글 목록 화면.
@@ -9,8 +8,8 @@ import BoardList from './BoardList'
 //   가시성 필터는 서버(RPC)가 끝냄 → folders/boards에는 '내가 볼 수 있는 것'만 들어온다.
 // props: user, folders, boards, folderPath, currentFolder, currentBoards,
 //        onGoHome, onGoFolder(id), onNewFolder(name), onJoinFolder, onShareFolder(f),
-//        onLeaveFolder(f), onMembersChanged, onDeleteFolder(f),
-//        onShowPending, onNewBoard, onOpenBoard(b), onDeleteBoard(b)
+//        onDeleteFolder(f), onShowPending, onNewBoard, onOpenBoard(b), onDeleteBoard(b)
+//   (공유 폴더의 참여자/채팅/나가기는 App의 채팅 패널에서 다룬다)
 function FolderView({
   user,
   folders,
@@ -23,8 +22,6 @@ function FolderView({
   onNewFolder,
   onJoinFolder,
   onShareFolder,
-  onLeaveFolder,
-  onMembersChanged,
   onDeleteFolder,
   onShowPending,
   onNewBoard,
@@ -84,31 +81,6 @@ function FolderView({
       {user.is_site_admin && atHome && (
         <div className="list-head">
           <button className="btn" onClick={onShowPending}>계정 관리</button>
-        </div>
-      )}
-
-      {/* 공유 폴더 안: 참여자 패널(항상) + 나가기/암호변경 */}
-      {currentFolder?.visibility === 'shared' && (
-        <div className="shared-panel">
-          <FolderMembers
-            token={user.token}
-            folder={currentFolder}
-            myName={user.name}
-            isAdmin={currentFolder.my_role === 'admin'}
-            onChanged={onMembersChanged}
-          />
-          <div className="shared-panel-actions">
-            {currentFolder.my_role === 'admin' && (
-              <button className="btn btn-small" onClick={() => onShareFolder(currentFolder)}>
-                암호 변경
-              </button>
-            )}
-            {currentFolder.my_role === 'member' && (
-              <button className="btn btn-danger btn-small" onClick={() => onLeaveFolder(currentFolder)}>
-                이 폴더에서 나가기
-              </button>
-            )}
-          </div>
         </div>
       )}
 
