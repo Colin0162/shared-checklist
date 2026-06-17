@@ -14,7 +14,9 @@ export async function login(name, pin) {
 
 // ── 읽기 ──
 // 게시글은 '보이는 폴더'의 것만 서버(RPC)가 내려줌 → 안 보이는 폴더 게시글은 숨겨짐.
+// 토큰이 없으면(로그인 전) 호출하지 않음 — 인자 없이 호출하면 RPC를 못 찾는 오류가 남.
 export async function getBoards(token) {
+  if (!token) return []
   const { data, error } = await supabase.rpc('list_visible_boards', { p_token: token })
   if (error) throw error
   return data
@@ -120,7 +122,9 @@ export async function verifyBoardEntry(boardId, pw) {
 
 // ── 폴더 (공유 모델) ──
 // 보이는 폴더만: 공개(기본) + 내 개인 + 내가 참여한 공유. (서버 RPC가 걸러서 내려줌)
+// 토큰이 없으면(로그인 전) 호출하지 않음 — 인자 없이 호출하면 RPC를 못 찾는 오류가 남.
 export async function getFolders(token) {
+  if (!token) return []
   const { data, error } = await supabase.rpc('list_visible_folders', { p_token: token })
   if (error) throw error
   return data
