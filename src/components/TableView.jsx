@@ -34,9 +34,14 @@ function TableView({ data }) {
         <tbody>
           {rows.map((row, ri) => (
             <tr key={ri}>
-              {columns.map((_, ci) => (
-                <td key={ci} data-label={columns[ci]}>{withLinks(row[ci])}</td>
-              ))}
+              {columns.map((_, ci) => {
+                const empty = !String(row[ci] ?? '').trim()
+                return (
+                  <td key={ci} data-label={columns[ci]} className={empty ? 'cell-empty' : undefined}>
+                    <span className="cell-value">{withLinks(row[ci])}</span>
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>

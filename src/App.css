@@ -1042,27 +1042,37 @@
   }
   .data-table.responsive td {
     display: flex;
-    justify-content: space-between;
-    gap: 14px;
+    align-items: stretch;
     min-width: 0;
     max-width: none;
     border: none;
     border-bottom: 1px solid var(--border);
-    text-align: right;
+    padding: 0;
   }
   .data-table.responsive tr td:last-child {
     border-bottom: none;
   }
+  .data-table.responsive td.cell-empty {
+    display: none;
+  }
+  /* 라벨(고정폭) | 세로 구분선 | 값(왼쪽 정렬) */
   .data-table.responsive td::before {
     content: attr(data-label);
+    flex: 0 0 96px;
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border-right: 1px solid var(--border);
     font-weight: 700;
+    font-size: 13px;
     color: var(--muted);
-    text-align: left;
-    white-space: nowrap;
-    flex-shrink: 0;
   }
-  .data-table.responsive td:empty {
-    display: none;
+  .data-table.responsive .cell-value {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 }
 .editor-table .text-input {
