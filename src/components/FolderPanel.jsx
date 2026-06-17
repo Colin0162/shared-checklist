@@ -141,11 +141,7 @@ function FolderPanel({
                   submit()
                 }
               }}
-              placeholder={
-                isAdmin && noticeMode
-                  ? '공지 내용 입력 (Enter 등록)'
-                  : '메시지 입력 (Enter 전송, Shift+Enter 줄바꿈)'
-              }
+              placeholder={isAdmin && noticeMode ? '공지 내용 입력' : '메시지 입력'}
             />
             <button className="btn btn-primary" onClick={submit}>
               {isAdmin && noticeMode ? '공지' : '전송'}
