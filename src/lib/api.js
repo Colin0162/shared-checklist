@@ -13,13 +13,9 @@ export async function login(name, pin) {
 }
 
 // ── 읽기 ──
-export async function getBoards() {
-  const { data, error } = await supabase
-    .from('boards')
-    .select(
-      'id, title, description, mode, categories, created_by, has_entry_password, memo, folder_id, event_date, table_data, sort_order',
-    )
-    .order('sort_order')
+// 게시글은 '보이는 폴더'의 것만 서버(RPC)가 내려줌 → 안 보이는 폴더 게시글은 숨겨짐.
+export async function getBoards(token) {
+  const { data, error } = await supabase.rpc('list_visible_boards', { p_token: token })
   if (error) throw error
   return data
 }
@@ -122,20 +118,18 @@ export async function verifyBoardEntry(boardId, pw) {
   return data
 }
 
-// ── 폴더 (#4) ──
-export async function getFolders() {
-  const { data, error } = await supabase
-    .from('folders')
-    .select('id, name, owner, is_private, parent_id, sort_order')
-    .order('sort_order')
+// ── 폴더 (공유 모델) ──
+// 보이는 폴더만: 공개(기본) + 내 개인 + 내가 참여한 공유. (서버 RPC가 걸러서 내려줌)
+export async function getFolders(token) {
+  const { data, error } = await supabase.rpc('list_visible_folders', { p_token: token })
   if (error) throw error
   return data
 }
-export async function createFolder(token, name, isPrivate, parentId) {
+// 새 폴더는 무조건 개인(private). 소유자 = 본인.
+export async function createFolder(token, name, parentId) {
   const { data, error } = await supabase.rpc('create_folder', {
     p_token: token,
     p_name: name,
-    p_is_private: isPrivate,
     p_parent_id: parentId,
   })
   if (error) throw error
@@ -143,6 +137,56 @@ export async function createFolder(token, name, isPrivate, parentId) {
 }
 export async function deleteFolder(token, folderId) {
   const { error } = await supabase.rpc('delete_folder', { p_token: token, p_folder_id: folderId })
+  if (error) throw error
+}
+// 개인 폴더를 공유로 전환 / 공유 폴더 암호 변경 (최상위 폴더만)
+export async function shareFolder(token, folderId, password) {
+  const { error } = await supabase.rpc('share_folder', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_password: password,
+  })
+  if (error) throw error
+}
+// 공유 해제 → 개인으로 (폴더 관리자만)
+export async function unshareFolder(token, folderId) {
+  const { error } = await supabase.rpc('unshare_folder', { p_token: token, p_folder_id: folderId })
+  if (error) throw error
+}
+// 암호(키워드)로 공유 폴더 참여 → { ok, joined } | { ok:false, error }
+export async function joinFolder(token, password) {
+  const { data, error } = await supabase.rpc('join_folder', { p_token: token, p_password: password })
+  if (error) throw error
+  return data
+}
+// 공유 폴더에서 나가기
+export async function leaveFolder(token, folderId) {
+  const { error } = await supabase.rpc('leave_folder', { p_token: token, p_folder_id: folderId })
+  if (error) throw error
+}
+// 참여자 목록 / 내보내기 / 관리자 넘기기
+export async function listFolderMembers(token, folderId) {
+  const { data, error } = await supabase.rpc('list_folder_members', {
+    p_token: token,
+    p_folder_id: folderId,
+  })
+  if (error) throw error
+  return data
+}
+export async function kickMember(token, folderId, userId) {
+  const { error } = await supabase.rpc('kick_member', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_user_id: userId,
+  })
+  if (error) throw error
+}
+export async function transferFolderAdmin(token, folderId, userId) {
+  const { error } = await supabase.rpc('transfer_folder_admin', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_user_id: userId,
+  })
   if (error) throw error
 }
 

@@ -16,6 +16,9 @@ import {
   getFolders,
   createFolder,
   deleteFolder,
+  shareFolder,
+  joinFolder,
+  leaveFolder,
   logClientError,
 } from './lib/api'
 import { useBoardItems } from './hooks/useBoardItems'
@@ -28,6 +31,7 @@ import ConfirmModal from './components/ConfirmModal'
 import Login from './components/Login'
 import PasswordPrompt from './components/PasswordPrompt'
 import PendingUsers from './components/PendingUsers'
+import FolderMembers from './components/FolderMembers'
 import Guide from './components/Guide'
 import ChangePassword from './components/ChangePassword'
 
@@ -73,6 +77,9 @@ function App() {
   const [boards, setBoards] = useState([])
   const [folders, setFolders] = useState([])
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null)
+  const [shareTarget, setShareTarget] = useState(null) // 공유 전환/암호변경 대상 폴더
+  const [showJoin, setShowJoin] = useState(false) // 공유 폴더 참여(암호 입력) 모달
+  const [membersTarget, setMembersTarget] = useState(null) // 참여자 보기 대상 폴더
   const [verifiedBoards, setVerifiedBoards] = useState(() => new Set()) // 입장 비번 통과한 게시글 id
   const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
@@ -128,16 +135,24 @@ function App() {
     useBoardItems(openBoardId, user, logout, reportError)
   const { noteLocks, sendNoteLock } = useNoteLocks(openBoardId, user?.name)
 
+  // 보이는 폴더/게시글은 토큰에 따라 달라지므로 로그인(토큰 변경) 때 다시 로드
   useEffect(() => {
     if (!supabase) return
-    Promise.all([getBoards(), getFolders()])
+    let alive = true
+    Promise.all([getBoards(user?.token), getFolders(user?.token)])
       .then(([bs, fs]) => {
+        if (!alive) return
         setBoards(bs)
         setFolders(fs)
       })
       .catch((e) => reportError(e.message))
-      .finally(() => setLoading(false))
-  }, [reportError])
+      .finally(() => {
+        if (alive) setLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [user?.token, reportError])
 
   // 없는/삭제된 게시글 URL로 들어오면 홈으로 (로드 끝난 뒤 판단)
   useEffect(() => {
@@ -153,7 +168,7 @@ function App() {
     const ch = supabase
       .channel('boards-all')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'boards' }, () => {
-        getBoards()
+        getBoards(user?.token)
           .then((bs) => setBoards(bs))
           .catch(() => {})
       })
@@ -161,7 +176,7 @@ function App() {
     return () => {
       supabase.removeChannel(ch)
     }
-  }, [])
+  }, [user?.token])
 
   function handleLogin(u) {
     const value = { name: u.name, is_site_admin: u.is_site_admin, token: u.token }
@@ -171,21 +186,22 @@ function App() {
 
   async function reloadBoards() {
     try {
-      setBoards(await getBoards())
+      setBoards(await getBoards(user.token))
     } catch (e) {
       reportError(e.message)
     }
   }
   async function reloadFolders() {
     try {
-      setFolders(await getFolders())
+      setFolders(await getFolders(user.token))
     } catch (e) {
       reportError(e.message)
     }
   }
-  async function doCreateFolder(name, isPrivate) {
+  // 새 폴더는 무조건 개인(나만 보기). 공유는 만든 뒤 '공유' 버튼으로.
+  async function doCreateFolder(name) {
     try {
-      await createFolder(user.token, name, isPrivate, currentFolder?.id || null)
+      await createFolder(user.token, name, currentFolder?.id || null)
       await reloadFolders()
     } catch (e) {
       reportError(e.message)
@@ -199,6 +215,38 @@ function App() {
       reportError(e.message)
     } finally {
       setConfirmDeleteFolder(null)
+    }
+  }
+  // 공유 전환 / 암호 변경 (PasswordPrompt: 성공 시 null, 실패 시 에러문자열)
+  async function doShareFolder(pw) {
+    try {
+      await shareFolder(user.token, shareTarget.id, pw)
+      await reloadFolders()
+      setShareTarget(null)
+      return null
+    } catch (e) {
+      return e.message
+    }
+  }
+  // 암호(키워드)로 공유 폴더 참여
+  async function doJoinFolder(pw) {
+    try {
+      const res = await joinFolder(user.token, pw)
+      if (!res.ok) return res.error || '참여하지 못했습니다.'
+      await reloadFolders()
+      setShowJoin(false)
+      return null
+    } catch (e) {
+      return e.message
+    }
+  }
+  // 공유 폴더에서 나가기
+  async function doLeaveFolder(folder) {
+    try {
+      await leaveFolder(user.token, folder.id)
+      await reloadFolders()
+    } catch (e) {
+      reportError(e.message)
     }
   }
 
@@ -379,6 +427,10 @@ function App() {
           onGoHome={() => navigate('/')}
           onGoFolder={(folderId) => navigate(folderUrl(folderId))}
           onNewFolder={doCreateFolder}
+          onJoinFolder={() => setShowJoin(true)}
+          onShareFolder={(f) => setShareTarget(f)}
+          onShowMembers={(f) => setMembersTarget(f)}
+          onLeaveFolder={doLeaveFolder}
           onDeleteFolder={(f) => setConfirmDeleteFolder(f)}
           onShowPending={() => setShowPending(true)}
           onNewBoard={openNew}
@@ -423,6 +475,34 @@ function App() {
           confirmLabel="삭제"
           onConfirm={doDeleteFolder}
           onCancel={() => setConfirmDeleteFolder(null)}
+        />
+      )}
+      {shareTarget && (
+        <PasswordPrompt
+          title={
+            shareTarget.visibility === 'shared'
+              ? `'${shareTarget.name}' 공유 암호 변경`
+              : `'${shareTarget.name}' 공유 — 암호(키워드) 설정`
+          }
+          onSubmit={doShareFolder}
+          onCancel={() => setShareTarget(null)}
+        />
+      )}
+      {showJoin && (
+        <PasswordPrompt
+          title="참여할 공유 폴더의 암호(키워드)"
+          onSubmit={doJoinFolder}
+          onCancel={() => setShowJoin(false)}
+        />
+      )}
+      {membersTarget && (
+        <FolderMembers
+          token={user.token}
+          folder={membersTarget}
+          myName={user.name}
+          isAdmin={membersTarget.my_role === 'admin'}
+          onChanged={reloadFolders}
+          onClose={() => setMembersTarget(null)}
         />
       )}
     </div>

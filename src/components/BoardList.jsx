@@ -1,4 +1,4 @@
-import { ddayLabel } from '../lib/constants'
+import { ddayLabel, displayName } from '../lib/constants'
 
 // 게시글 목록. 카드를 누르면 그 게시글을 연다.
 // props: boards, onOpen, siteAdmin, onDelete
@@ -24,7 +24,7 @@ function BoardList({ boards, onOpen, siteAdmin, onDelete }) {
                   : b.mode === 'table'
                     ? '표'
                     : '할 일 리스트'}
-              {b.created_by && ` · 작성자 ${b.created_by}`}
+              {b.created_by && ` · 작성자 ${displayName(b.created_by)}`}
               {b.event_date && <span className="dday"> {ddayLabel(b.event_date)}</span>}
             </span>
           </button>
