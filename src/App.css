@@ -1017,6 +1017,54 @@
   background: #f4f0e9;
   font-weight: 700;
 }
+/* 폰에서 '보기 표'(.responsive)는 한 행을 카드로 — 슬라이드 없이 '열이름: 값' 세로 표시.
+   (편집 표 .editor-table 은 그대로 둔다) */
+@media (max-width: 640px) {
+  .data-table.responsive {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .data-table.responsive thead {
+    display: none;
+  }
+  .data-table.responsive tbody,
+  .data-table.responsive tr,
+  .data-table.responsive td {
+    display: block;
+    width: 100%;
+  }
+  .data-table.responsive tr {
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .data-table.responsive td {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    min-width: 0;
+    max-width: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+  }
+  .data-table.responsive tr td:last-child {
+    border-bottom: none;
+  }
+  .data-table.responsive td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--muted);
+    text-align: left;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .data-table.responsive td:empty {
+    display: none;
+  }
+}
 .editor-table .text-input {
   min-width: 90px;
 }

@@ -23,7 +23,7 @@ function TableView({ data }) {
   }
   return (
     <div className="table-wrap">
-      <table className="data-table">
+      <table className="data-table responsive">
         <thead>
           <tr>
             {columns.map((c, i) => (
@@ -35,7 +35,7 @@ function TableView({ data }) {
           {rows.map((row, ri) => (
             <tr key={ri}>
               {columns.map((_, ci) => (
-                <td key={ci}>{withLinks(row[ci])}</td>
+                <td key={ci} data-label={columns[ci]}>{withLinks(row[ci])}</td>
               ))}
             </tr>
           ))}
