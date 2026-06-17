@@ -482,6 +482,26 @@
   resize: none;
 }
 
+/* 이동 모달: 대상 폴더 고르기 */
+.move-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.move-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.move-row:hover {
+  background: #f1f0ec;
+}
+
 .board-list {
   list-style: none;
   margin: 0;

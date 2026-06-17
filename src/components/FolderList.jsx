@@ -4,15 +4,15 @@ import { displayName } from '../lib/constants'
 //   참여자·나가기는 '폴더 안'으로 옮겨서 여기엔 없음. 여기선 공유 전환·삭제만.
 // props:
 //   folders   : 이미 분류된 폴더 배열 (각 항목에 visibility, my_role, owner)
-//   onOpen(f) / onShare(f) / onDelete(f)
-//   canShare(f) / canDelete(f) : 그 버튼을 보일지
+//   onOpen(f) / onShare(f) / onMove(f) / onDelete(f)
+//   canShare(f) / canMove(f) / canDelete(f) : 그 버튼을 보일지
 const VIS = {
   public: { icon: '📁', label: '공개' },
   private: { icon: '🔒', label: '개인' },
   shared: { icon: '🤝', label: '공유' },
 }
 
-function FolderList({ folders, onOpen, onShare, onDelete, canShare, canDelete }) {
+function FolderList({ folders, onOpen, onShare, onMove, onDelete, canShare, canMove, canDelete }) {
   if (!folders.length) return null
   return (
     <ul className="board-list">
@@ -35,6 +35,9 @@ function FolderList({ folders, onOpen, onShare, onDelete, canShare, canDelete })
             <div className="folder-actions">
               {canShare(f) && (
                 <button className="btn btn-small" onClick={() => onShare(f)}>공유</button>
+              )}
+              {canMove(f) && (
+                <button className="btn btn-small" onClick={() => onMove(f)}>이동</button>
               )}
               {canDelete(f) && (
                 <button className="btn btn-danger btn-small" onClick={() => onDelete(f)}>삭제</button>

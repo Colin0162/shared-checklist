@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { listFolderMembers, kickMember, transferFolderAdmin } from '../lib/api'
 import { displayName } from '../lib/constants'
+import ConfirmModal from './ConfirmModal'
 
 // 공유 폴더 참여자 패널 — 폴더 안 상단에 '항상' 표시(모달 아님).
 //   관리자면 각 참여자 옆에 관리자 넘기기·내보내기.
@@ -9,6 +10,7 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
   const [members, setMembers] = useState([])
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null) // { message, run } 재확인 대상
 
   // .then 콜백 안에서 set → effect 본문 동기 setState 금지 룰을 피함(앱의 다른 로더와 동일 패턴)
   const load = useCallback(
@@ -54,14 +56,24 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
                 <button
                   className="btn btn-small"
                   disabled={busy}
-                  onClick={() => act(() => transferFolderAdmin(token, folder.id, m.user_id))}
+                  onClick={() =>
+                    setPending({
+                      message: `'${displayName(m.name)}'님에게 폴더 관리자를 넘길까요? 내 권한은 일반 참여자가 됩니다.`,
+                      run: () => act(() => transferFolderAdmin(token, folder.id, m.user_id)),
+                    })
+                  }
                 >
                   관리자 넘기기
                 </button>
                 <button
                   className="btn btn-danger btn-small"
                   disabled={busy}
-                  onClick={() => act(() => kickMember(token, folder.id, m.user_id))}
+                  onClick={() =>
+                    setPending({
+                      message: `'${displayName(m.name)}'님을 이 폴더에서 내보낼까요?`,
+                      run: () => act(() => kickMember(token, folder.id, m.user_id)),
+                    })
+                  }
                 >
                   내보내기
                 </button>
@@ -70,6 +82,18 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
           </li>
         ))}
       </ul>
+      {pending && (
+        <ConfirmModal
+          message={pending.message}
+          confirmLabel="확인"
+          onConfirm={() => {
+            const run = pending.run
+            setPending(null)
+            run()
+          }}
+          onCancel={() => setPending(null)}
+        />
+      )}
     </div>
   )
 }

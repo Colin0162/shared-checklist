@@ -19,6 +19,8 @@ import {
   shareFolder,
   joinFolder,
   leaveFolder,
+  moveBoard,
+  moveFolder,
   logClientError,
 } from './lib/api'
 import { useBoardItems } from './hooks/useBoardItems'
@@ -33,6 +35,7 @@ import Login from './components/Login'
 import PasswordPrompt from './components/PasswordPrompt'
 import PendingUsers from './components/PendingUsers'
 import FolderPanel from './components/FolderPanel'
+import MoveModal from './components/MoveModal'
 import Guide from './components/Guide'
 import ChangePassword from './components/ChangePassword'
 
@@ -73,6 +76,32 @@ function folderUrl(folderId) {
   return folderId ? '/folder/' + folderId : '/'
 }
 
+// 이동 모달용: 폴더 들여쓰기 깊이(조상 수)
+function folderDepth(folders, id) {
+  const byId = new Map(folders.map((f) => [String(f.id), f]))
+  let d = 0
+  let cur = byId.get(String(id))
+  const seen = new Set()
+  while (cur && cur.parent_id && byId.has(String(cur.parent_id)) && !seen.has(String(cur.id))) {
+    seen.add(String(cur.id))
+    d++
+    cur = byId.get(String(cur.parent_id))
+  }
+  return d
+}
+// candidate가 ancestor(자기 포함)의 후손인지 — 폴더 이동 후보에서 자기/후손 제외용
+function isDescendant(folders, candidateId, ancestorId) {
+  const byId = new Map(folders.map((f) => [String(f.id), f]))
+  let cur = byId.get(String(candidateId))
+  const seen = new Set()
+  while (cur && !seen.has(String(cur.id))) {
+    if (String(cur.id) === String(ancestorId)) return true
+    seen.add(String(cur.id))
+    cur = cur.parent_id ? byId.get(String(cur.parent_id)) : null
+  }
+  return false
+}
+
 function App() {
   const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
@@ -82,6 +111,8 @@ function App() {
   const [showJoin, setShowJoin] = useState(false) // 공유 폴더 참여(암호 입력) 모달
   const [confirmLeaveFolder, setConfirmLeaveFolder] = useState(null) // 나가기 재확인 대상 폴더
   const [chatOpenFor, setChatOpenFor] = useState(null) // 채팅 패널이 열린 폴더 id
+  const [moveBoardTarget, setMoveBoardTarget] = useState(null) // 이동할 게시글
+  const [moveFolderTarget, setMoveFolderTarget] = useState(null) // 이동할 폴더
   const [verifiedBoards, setVerifiedBoards] = useState(() => new Set()) // 입장 비번 통과한 게시글 id
   const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
@@ -261,6 +292,27 @@ function App() {
       reportError(e.message)
     } finally {
       setConfirmLeaveFolder(null)
+    }
+  }
+  // 이동 (MoveModal: 성공 시 null, 실패 시 에러문자열)
+  async function doMoveBoard(targetFolderId) {
+    try {
+      await moveBoard(user.token, moveBoardTarget.id, targetFolderId)
+      await reloadBoards()
+      setMoveBoardTarget(null)
+      return null
+    } catch (e) {
+      return e.message
+    }
+  }
+  async function doMoveFolder(targetParentId) {
+    try {
+      await moveFolder(user.token, moveFolderTarget.id, targetParentId)
+      await reloadFolders()
+      setMoveFolderTarget(null)
+      return null
+    } catch (e) {
+      return e.message
     }
   }
 
@@ -443,6 +495,8 @@ function App() {
           onNewFolder={doCreateFolder}
           onJoinFolder={() => setShowJoin(true)}
           onShareFolder={(f) => setShareTarget(f)}
+          onMoveFolder={(f) => setMoveFolderTarget(f)}
+          onMoveBoard={(b) => setMoveBoardTarget(b)}
           onDeleteFolder={(f) => setConfirmDeleteFolder(f)}
           onShowPending={() => setShowPending(true)}
           onNewBoard={openNew}
@@ -513,6 +567,26 @@ function App() {
           confirmLabel="나가기"
           onConfirm={doLeaveFolder}
           onCancel={() => setConfirmLeaveFolder(null)}
+        />
+      )}
+      {moveBoardTarget && (
+        <MoveModal
+          title={`'${moveBoardTarget.title}'을(를) 어느 폴더로 옮길까요?`}
+          candidates={folders.map((f) => ({ id: f.id, name: f.name, depth: folderDepth(folders, f.id) }))}
+          allowHome={false}
+          onMove={doMoveBoard}
+          onCancel={() => setMoveBoardTarget(null)}
+        />
+      )}
+      {moveFolderTarget && (
+        <MoveModal
+          title={`'${moveFolderTarget.name}' 폴더를 어디로 옮길까요?`}
+          candidates={folders
+            .filter((f) => !isDescendant(folders, f.id, moveFolderTarget.id))
+            .map((f) => ({ id: f.id, name: f.name, depth: folderDepth(folders, f.id) }))}
+          allowHome
+          onMove={doMoveFolder}
+          onCancel={() => setMoveFolderTarget(null)}
         />
       )}
 

@@ -1,8 +1,8 @@
 import { ddayLabel, displayName } from '../lib/constants'
 
 // 게시글 목록. 카드를 누르면 그 게시글을 연다.
-// props: boards, onOpen, siteAdmin, onDelete
-function BoardList({ boards, onOpen, siteAdmin, onDelete }) {
+// props: boards, onOpen, siteAdmin, onDelete, onMove(b)
+function BoardList({ boards, onOpen, siteAdmin, onDelete, onMove }) {
   if (boards.length === 0) {
     return <p className="muted">게시글이 없습니다.</p>
   }
@@ -28,11 +28,14 @@ function BoardList({ boards, onOpen, siteAdmin, onDelete }) {
               {b.event_date && <span className="dday"> {ddayLabel(b.event_date)}</span>}
             </span>
           </button>
-          {siteAdmin && (
-            <button className="btn btn-danger btn-small board-del" onClick={() => onDelete(b)}>
-              삭제
-            </button>
-          )}
+          <div className="folder-actions">
+            {onMove && (
+              <button className="btn btn-small" onClick={() => onMove(b)}>이동</button>
+            )}
+            {siteAdmin && (
+              <button className="btn btn-danger btn-small" onClick={() => onDelete(b)}>삭제</button>
+            )}
+          </div>
         </li>
       ))}
     </ul>

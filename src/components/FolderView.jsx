@@ -8,7 +8,8 @@ import BoardList from './BoardList'
 //   가시성 필터는 서버(RPC)가 끝냄 → folders/boards에는 '내가 볼 수 있는 것'만 들어온다.
 // props: user, folders, boards, folderPath, currentFolder, currentBoards,
 //        onGoHome, onGoFolder(id), onNewFolder(name), onJoinFolder, onShareFolder(f),
-//        onDeleteFolder(f), onShowPending, onNewBoard, onOpenBoard(b), onDeleteBoard(b)
+//        onMoveFolder(f), onMoveBoard(b), onDeleteFolder(f),
+//        onShowPending, onNewBoard, onOpenBoard(b), onDeleteBoard(b)
 //   (공유 폴더의 참여자/채팅/나가기는 App의 채팅 패널에서 다룬다)
 function FolderView({
   user,
@@ -22,6 +23,8 @@ function FolderView({
   onNewFolder,
   onJoinFolder,
   onShareFolder,
+  onMoveFolder,
+  onMoveBoard,
   onDeleteFolder,
   onShowPending,
   onNewBoard,
@@ -42,19 +45,22 @@ function FolderView({
 
   // 공유 버튼: 내 개인 최상위 폴더만(공유 폴더의 암호 변경은 폴더 안 패널에서)
   const canShare = (f) => !f.parent_id && f.visibility === 'private' && f.owner === user.name
-  // 삭제 버튼: 빈 폴더만 / 종류별 권한
+  // 이동 버튼: 개인 폴더만(공유·공개는 최상위 고정). 목록에 보인다는 건 접근 권한이 있다는 뜻
+  const canMove = (f) => f.visibility === 'private'
+  // 삭제 버튼: 빈 폴더만. 공개는 사이트관리자, 그 외는 볼 수 있는 사람(=목록에 보이면 가능)
   const canDelete = (f) => {
     if (hasChildren(f.id) || hasBoards(f.id)) return false
     if (f.visibility === 'public') return Boolean(user.is_site_admin)
-    if (f.visibility === 'shared') return f.my_role === 'admin' || Boolean(user.is_site_admin)
-    return f.owner === user.name || Boolean(user.is_site_admin)
+    return true
   }
 
   const listProps = {
     onOpen: (f) => onGoFolder(f.id),
     onShare: onShareFolder,
+    onMove: onMoveFolder,
     onDelete: onDeleteFolder,
     canShare,
+    canMove,
     canDelete,
   }
 
@@ -95,7 +101,7 @@ function FolderView({
         <div className="folder-new">
           <input
             className="text-input"
-            placeholder="폴더 이름 (만들면 나만 볼 수 있어요)"
+            placeholder="폴더 이름"
             value={name}
             autoFocus
             onChange={(e) => setName(e.target.value)}
@@ -146,6 +152,7 @@ function FolderView({
             onOpen={onOpenBoard}
             siteAdmin={Boolean(user.is_site_admin)}
             onDelete={onDeleteBoard}
+            onMove={onMoveBoard}
           />
         </>
       )}

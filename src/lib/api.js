@@ -153,6 +153,23 @@ export async function deleteFolder(token, folderId) {
   const { error } = await supabase.rpc('delete_folder', { p_token: token, p_folder_id: folderId })
   if (error) throw error
 }
+// 이동: 게시글은 폴더로(target 필수), 폴더는 다른 폴더/홈(target null=홈)으로
+export async function moveBoard(token, boardId, targetFolderId) {
+  const { error } = await supabase.rpc('move_board', {
+    p_token: token,
+    p_board_id: boardId,
+    p_target_folder_id: targetFolderId,
+  })
+  if (error) throw error
+}
+export async function moveFolder(token, folderId, targetParentId) {
+  const { error } = await supabase.rpc('move_folder', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_target_parent_id: targetParentId,
+  })
+  if (error) throw error
+}
 // 개인 폴더를 공유로 전환 / 공유 폴더 암호 변경 (최상위 폴더만)
 export async function shareFolder(token, folderId, password) {
   const { error } = await supabase.rpc('share_folder', {
