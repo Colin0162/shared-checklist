@@ -2,6 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import FolderMembers from './FolderMembers'
 import { displayName } from '../lib/constants'
 
+// 터치 기기(폰/태블릿): Enter는 줄바꿈, 전송은 버튼으로. 데스크톱: Enter 전송.
+const isTouchDevice =
+  typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)')?.matches
+
 function fmtTime(ts) {
   try {
     return new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
@@ -136,7 +140,8 @@ function FolderPanel({
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                // 폰/태블릿에선 Enter=줄바꿈(전송은 버튼), 데스크톱에선 Enter=전송
+                if (e.key === 'Enter' && !e.shiftKey && !isTouchDevice) {
                   e.preventDefault()
                   submit()
                 }

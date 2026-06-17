@@ -1,16 +1,71 @@
-# React + Vite
+# 청년회 체크리스트
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+천주교 마산교구 문산본당 청년회를 위해 만든, **여러 명이 링크 하나로 함께 쓰는 실시간 공유 체크리스트 웹앱**. MT·교리·행사 준비물부터 일정표·답사 평가까지, 폴더로 정리하고 다 같이 실시간으로 체크·메모한다.
 
-Currently, two official plugins are available:
+🔗 배포: Vercel · 저장소: Colin0162/shared-checklist
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 무엇을 할 수 있나 (기능)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**폴더 (정리함)**
+- 폴더 종류 3가지: **🔒 개인**(나만) · **🤝 공유**(암호 아는 사람) · **📁 공개**(누구나)
+- 새 폴더는 무조건 개인 → 만든 뒤 **'공유' 버튼**으로 암호(키워드)를 정해 공유 폴더로 전환(최상위 폴더만)
+- 다른 사람은 **'🔑 공유 폴더 참여'**에 암호를 넣으면 그때부터 폴더가 보임
+- 폴더 안에 폴더(하위 폴더), 브레드크럼 이동
+- 폴더·게시글 **이동**(단계별 탐색) / **삭제**(빈 폴더, 재확인)
 
-## Expanding the ESLint configuration
+**게시글 (체크리스트)**
+- 형식 4가지: **체크박스 / 상·중·하 평가 / 할 일 리스트 / 표(일정표)**
+- 대항목(카테고리)·수량·담당자·비고칸·행사일(D-day)·템플릿 저장/불러오기
+- **입장 비밀번호**(추가/변경/삭제) + **편집(관리자) 비밀번호**
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+**함께 쓰기**
+- 실시간 공유 체크 + 체크한 사람 표시, 진행률 바, 미완료/담당자 필터
+- 비고 동시 편집 잠금('OOO님이 작성 중')
+- 인쇄 / PDF 내보내기
+
+**공유 폴더 채팅**
+- 💬 패널(데스크톱=왼쪽 사이드 / 폰=드로어)에서 **참여자 명단 + 채팅**
+- 폴더 관리자: 참여자 **내보내기·관리자 넘기기**, **공지(📢)**
+- 채팅 보존: 공지는 영구, 일반 채팅은 최근 24시간 / 삭제는 본인 것만
+
+**계정·보안**
+- 이름(세례명)+비밀번호 로그인, **가입 승인제**(관리자 승인 후 사용)
+- 비밀번호는 해시 저장, 권한은 서버(RPC/RLS)에서 검증
+- 사이트 관리자(`anrhks456`)는 화면에 '서버 관리자'로 표시 — 계정 관리·공개 폴더 관리
+
+**모바일**
+- **PWA**: 홈 화면에 앱처럼 설치 + 오프라인 앱 셸(네트워크 끊겨도 앱은 열림)
+- 폰에서 표는 **카드형**(라벨 | 값)으로 자동 변환
+
+---
+
+## 기술 스택
+- **프론트엔드**: Vite + React, react-router-dom
+- **백엔드/DB/실시간/인증**: Supabase (Postgres + RLS + security definer RPC + Realtime)
+- **호스팅**: Vercel · **앱화**: vite-plugin-pwa
+
+---
+
+## 만들어 온 순서 (요약)
+1. **MVP** — 실시간 공유 체크, 이름+PIN 로그인, 체크한 사람 표시
+2. **관리자 빌더** — 게시글 생성/편집, 4형식, 대항목·수량·담당자·비고, 템플릿
+3. **보안** — 비번 해시, RLS, 게시글 입장/편집 비번, 가입 승인제, 비고 잠금
+4. **안정화** — URL 라우팅(주소에서 파생), 에러 로깅, App 분할(컴포넌트+훅), DB 마이그레이션 체계 도입
+5. **폴더 공유 모델** — 개인/공유/공개 + 암호 참여 + 참여자 관리 + 채팅·공지 + 이동/권한
+6. **모바일·마무리** — PWA(설치·오프라인), 폰 표 카드형, 채팅 UX 다듬기
+
+---
+
+## 개발 / 수정
+```powershell
+npm install
+npm run dev      # 로컬 미리보기
+npm run lint     # 문법 검사
+npm run build    # 빌드 확인
+git push         # → Vercel 자동 배포
+```
+- **혼자 고칠 때**: [`EDITING_GUIDE.md`](EDITING_GUIDE.md) (어느 파일이 어느 화면인지 + 위치표)
+- **DB 변경**: [`supabase/migrations/README.md`](supabase/migrations/README.md) (번호별 파일 하나씩 SQL Editor에서 RUN)
+- `.env.local`(Supabase 키)는 깃에 올리지 않음
