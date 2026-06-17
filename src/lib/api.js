@@ -231,11 +231,12 @@ export async function listMessages(token, folderId, limit = 200) {
   if (error) throw error
   return data
 }
-export async function sendMessage(token, folderId, content) {
+export async function sendMessage(token, folderId, content, isNotice = false) {
   const { error } = await supabase.rpc('send_message', {
     p_token: token,
     p_folder_id: folderId,
     p_content: content,
+    p_is_notice: isNotice,
   })
   if (error) throw error
 }

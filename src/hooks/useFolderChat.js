@@ -44,9 +44,9 @@ export function useFolderChat(folderId, token, active) {
   const markRead = useCallback(() => setUnread(false), [])
 
   const send = useCallback(
-    async (content) => {
+    async (content, isNotice = false) => {
       try {
-        await sendMessage(token, folderId, content) // 내 메시지도 실시간 INSERT로 목록에 들어옴
+        await sendMessage(token, folderId, content, isNotice) // 내 메시지도 실시간 INSERT로 목록에 들어옴
       } catch (e) {
         setChatError(e.message)
       }
