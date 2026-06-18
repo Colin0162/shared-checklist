@@ -355,7 +355,7 @@ function App() {
   async function handleSaved() {
     setEditing(false)
     try {
-      setBoards(await getBoards()) // openBoard는 boards에서 파생되어 자동 갱신
+      setBoards(await getBoards(user.token)) // openBoard는 boards에서 파생되어 자동 갱신
       if (openBoardId) setItems(await getBoardItems(openBoardId)) // 편집된 항목 다시 로드
     } catch (e) {
       reportError(e.message)
