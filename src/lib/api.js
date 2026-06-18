@@ -184,7 +184,7 @@ export async function unshareFolder(token, folderId) {
   const { error } = await supabase.rpc('unshare_folder', { p_token: token, p_folder_id: folderId })
   if (error) throw error
 }
-// 암호(키워드)로 공유 폴더 '참여 요청'(즉시 가입 아님) → { ok } | { ok:false, error }
+// 암호(키워드)로 공유 폴더 '참여 요청'(즉시 가입 아님 — 관리자 수락 대기) → { ok } | { ok:false, error }
 export async function requestJoin(token, password) {
   const { data, error } = await supabase.rpc('request_join', { p_token: token, p_password: password })
   if (error) throw error

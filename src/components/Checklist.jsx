@@ -27,7 +27,7 @@ function groupItems(items, categoryOrder) {
 }
 
 // props: board, items, adminMode, onBack, onEnterAdmin, onExitAdmin,
-//        onEdit, onReset, onSetStatus, onSetNote
+//        onEdit, onReset, onDeleteBoard, onSetStatus, onSetNote
 function Checklist({
   board,
   items,
@@ -37,6 +37,7 @@ function Checklist({
   onExitAdmin,
   onEdit,
   onReset,
+  onDeleteBoard,
   onSetStatus,
   onSetNote,
   noteLocks,
@@ -91,6 +92,7 @@ function Checklist({
                 {hasProgress && (
                   <button className="btn btn-small" onClick={onReset}>초기화</button>
                 )}
+                <button className="btn btn-small btn-danger" onClick={onDeleteBoard}>삭제</button>
                 <button className="btn btn-small" onClick={onExitAdmin}>해제</button>
               </>
             ) : (

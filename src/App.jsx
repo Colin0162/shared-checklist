@@ -16,6 +16,7 @@ import {
   getFolders,
   createFolder,
   deleteFolder,
+  deleteBoard,
   shareFolder,
   requestJoin,
   leaveFolder,
@@ -106,6 +107,7 @@ function App() {
   const [adminPrompt, setAdminPrompt] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
+  const [confirmDeleteOwnBoard, setConfirmDeleteOwnBoard] = useState(false) // 관리자 모드에서 이 게시글 삭제
   const [showPending, setShowPending] = useState(false)
   const [showGuide, setShowGuide] = useState(false)
   const [showChangePw, setShowChangePw] = useState(false)
@@ -386,6 +388,19 @@ function App() {
       setConfirmDeleteBoard(null)
     }
   }
+  // 관리자 모드(편집 비번 보유)에서 이 게시글 삭제 → 목록으로
+  async function doDeleteOwnBoard() {
+    const folderId = openBoard?.folder_id
+    try {
+      await deleteBoard(openBoard.id, adminPw)
+      setConfirmDeleteOwnBoard(false)
+      navigate(folderUrl(folderId))
+      await reloadBoards()
+    } catch (e) {
+      reportError(e.message)
+      setConfirmDeleteOwnBoard(false)
+    }
+  }
 
   const nextSortOrder = boards.reduce((max, b) => Math.max(max, b.sort_order ?? 0), 0) + 1
 
@@ -465,6 +480,7 @@ function App() {
           onExitAdmin={() => setAdmin(null)}
           onEdit={openEdit}
           onReset={() => setConfirmReset(true)}
+          onDeleteBoard={() => setConfirmDeleteOwnBoard(true)}
           onSetStatus={handleSetStatus}
           onSetNote={handleSetNote}
           noteLocks={noteLocks}
@@ -519,6 +535,14 @@ function App() {
           confirmLabel="초기화"
           onConfirm={doReset}
           onCancel={() => setConfirmReset(false)}
+        />
+      )}
+      {confirmDeleteOwnBoard && openBoard && (
+        <ConfirmModal
+          message={`'${openBoard.title}' 게시글을 삭제할까요? 항목과 체크 기록이 모두 사라집니다.`}
+          confirmLabel="삭제"
+          onConfirm={doDeleteOwnBoard}
+          onCancel={() => setConfirmDeleteOwnBoard(false)}
         />
       )}
       {confirmDeleteBoard && (
