@@ -15,7 +15,7 @@ const newKey = () => 'k-' + ++seq
 
 // 관리자 게시글 빌더 (생성/편집).
 // props: token, author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted
-function AdminEditor({ token, author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted }) {
+function AdminEditor({ token, author, adminPw, folderId, board, originalItems, nextSortOrder, onSaved, onCancel, onDeleted, onEntryApplied }) {
   const isNew = !board
 
   const [title, setTitle] = useState(board?.title ?? '')
@@ -70,6 +70,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
       await setEntryPassword(token, board.id, adminPw, entry)
       setEntryMsg(entry ? '입장 비밀번호를 적용했습니다.' : '전체 공개로 바꿨습니다(입장 비번 없음).')
       setEntryEditPw('')
+      onEntryApplied?.() // 목록의 자물쇠 표시 즉시 갱신
     } catch (e) {
       setEntryMsg('오류: ' + e.message)
     } finally {

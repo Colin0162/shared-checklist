@@ -458,6 +458,7 @@ function App() {
           onSaved={handleSaved}
           onCancel={() => setEditing(false)}
           onDeleted={handleDeleted}
+          onEntryApplied={reloadBoards}
         />
       )}
 
