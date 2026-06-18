@@ -76,6 +76,18 @@ function folderUrl(folderId) {
   return folderId ? '/folder/' + folderId : '/'
 }
 
+// 그 폴더의 최상위 조상 id (이동을 같은 최상위 폴더 안으로 제한할 때 사용)
+function rootIdOf(folders, folderId) {
+  const byId = new Map(folders.map((f) => [String(f.id), f]))
+  let cur = folderId ? byId.get(String(folderId)) : null
+  const seen = new Set()
+  while (cur && cur.parent_id && byId.has(String(cur.parent_id)) && !seen.has(String(cur.id))) {
+    seen.add(String(cur.id))
+    cur = byId.get(String(cur.parent_id))
+  }
+  return cur ? cur.id : null
+}
+
 function App() {
   const [user, setUser] = useState(loadUser)
   const [boards, setBoards] = useState([])
@@ -552,6 +564,7 @@ function App() {
           title={`'${moveBoardTarget.title}'을(를) 어디로 옮길까요?`}
           folders={folders}
           kind="board"
+          rootId={rootIdOf(folders, moveBoardTarget.folder_id)}
           onMove={doMoveBoard}
           onCancel={() => setMoveBoardTarget(null)}
         />
@@ -562,6 +575,7 @@ function App() {
           folders={folders}
           kind="folder"
           excludeId={moveFolderTarget.id}
+          rootId={rootIdOf(folders, moveFolderTarget.id)}
           onMove={doMoveFolder}
           onCancel={() => setMoveFolderTarget(null)}
         />

@@ -14,38 +14,37 @@ function isDescendant(folders, candidateId, ancestorId) {
 }
 
 // 폴더를 한 단계씩 들어가며 이동 대상을 고르는 모달.
-//   폴더를 누르면 그 안으로 들어가고, 원하는 위치에서 '여기로 이동'.
+//   같은 '최상위 폴더(rootId)' 안에서만 탐색 — 다른 최상위로는 못 옮김.
 // props:
 //   title, folders(전체 보이는 폴더), kind('board'|'folder'),
-//   excludeId(폴더 이동 시 자기 폴더 id — 자기/후손으로는 못 감),
-//   onMove(targetId|null) : 성공 시 falsy, 실패 시 에러문자열
-//   onCancel
-function MoveModal({ title, folders, kind, excludeId, onMove, onCancel }) {
-  const [cursor, setCursor] = useState(null) // 현재 보고 있는 폴더 id (null=홈/최상위)
+//   excludeId(폴더 이동 시 자기 폴더 id), rootId(현재 항목의 최상위 폴더 id),
+//   onMove(targetId) : 성공 시 falsy, 실패 시 에러문자열, onCancel
+function MoveModal({ title, folders, kind, excludeId, rootId, onMove, onCancel }) {
+  const [cursor, setCursor] = useState(rootId ?? null) // 현재 보고 있는 폴더 id
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
   const byId = new Map(folders.map((f) => [String(f.id), f]))
   const children = folders.filter((f) => (f.parent_id || null) === cursor)
-
-  // 폴더 이동: 자기 자신/후손으로는 들어갈 수 없음
   const blocked = (f) => kind === 'folder' && isDescendant(folders, f.id, excludeId)
 
-  // 현재 위치(cursor)로 가는 경로(브레드크럼)
+  // 경로: 현재 위치 → 최상위(rootId)까지만 (그 위 홈은 안 보여줌)
   const path = []
   let c = cursor ? byId.get(String(cursor)) : null
   const seen = new Set()
   while (c && !seen.has(String(c.id))) {
     seen.add(String(c.id))
     path.unshift(c)
+    if (String(c.id) === String(rootId)) break
     c = c.parent_id ? byId.get(String(c.parent_id)) : null
   }
 
-  // 게시글은 폴더 안에만(홈 불가). 폴더는 홈(최상위)도 가능.
-  const canSelectHere = kind === 'board' ? cursor !== null : true
+  // 게시글은 폴더 안에만(cursor 필요). 폴더는 현재 위치가 자기/후손이면 불가
+  const cursorBlocked = kind === 'folder' && cursor && isDescendant(folders, cursor, excludeId)
+  const canSelectHere = cursor !== null && !cursorBlocked
   const cursorName = cursor ? byId.get(String(cursor))?.name : null
 
-  async function selectHere() {
+  async function go() {
     setBusy(true)
     setErr('')
     const res = await onMove(cursor)
@@ -61,17 +60,18 @@ function MoveModal({ title, folders, kind, excludeId, onMove, onCancel }) {
         <p className="modal-msg">{title}</p>
 
         <nav className="move-crumbs">
-          <button className="crumb" onClick={() => setCursor(null)}>🏠 홈</button>
-          {path.map((f) => (
+          {path.map((f, i) => (
             <span className="crumb-wrap" key={f.id}>
-              <span className="crumb-sep">›</span>
+              {i > 0 && <span className="crumb-sep">›</span>}
               <button className="crumb" onClick={() => setCursor(f.id)}>{f.name}</button>
             </span>
           ))}
         </nav>
 
         <ul className="move-list">
-          {children.length === 0 && <li className="muted" style={{ padding: 8 }}>하위 폴더가 없습니다.</li>}
+          {children.length === 0 && (
+            <li className="muted" style={{ padding: 8 }}>하위 폴더가 없습니다.</li>
+          )}
           {children.map((f) => (
             <li key={f.id}>
               <button
@@ -90,8 +90,8 @@ function MoveModal({ title, folders, kind, excludeId, onMove, onCancel }) {
         {err && <p className="error" style={{ marginTop: 8 }}>오류: {err}</p>}
         <div className="modal-actions" style={{ marginTop: 12 }}>
           <button className="btn" onClick={onCancel} disabled={busy}>취소</button>
-          <button className="btn btn-primary" onClick={selectHere} disabled={busy || !canSelectHere}>
-            {cursor ? `‘${cursorName}’ 안으로 이동` : '홈(최상위)으로 이동'}
+          <button className="btn btn-primary" onClick={go} disabled={busy || !canSelectHere}>
+            {cursorName ? `‘${cursorName}’ 안으로 이동` : '이동'}
           </button>
         </div>
       </div>
