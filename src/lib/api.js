@@ -184,11 +184,36 @@ export async function unshareFolder(token, folderId) {
   const { error } = await supabase.rpc('unshare_folder', { p_token: token, p_folder_id: folderId })
   if (error) throw error
 }
-// 암호(키워드)로 공유 폴더 참여 → { ok, joined } | { ok:false, error }
-export async function joinFolder(token, password) {
-  const { data, error } = await supabase.rpc('join_folder', { p_token: token, p_password: password })
+// 암호(키워드)로 공유 폴더 '참여 요청'(즉시 가입 아님) → { ok } | { ok:false, error }
+export async function requestJoin(token, password) {
+  const { data, error } = await supabase.rpc('request_join', { p_token: token, p_password: password })
   if (error) throw error
   return data
+}
+// 참여 요청 목록 / 수락 / 거부 (폴더 관리자)
+export async function listJoinRequests(token, folderId) {
+  const { data, error } = await supabase.rpc('list_join_requests', {
+    p_token: token,
+    p_folder_id: folderId,
+  })
+  if (error) throw error
+  return data
+}
+export async function approveJoin(token, folderId, userId) {
+  const { error } = await supabase.rpc('approve_join', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_user_id: userId,
+  })
+  if (error) throw error
+}
+export async function rejectJoin(token, folderId, userId) {
+  const { error } = await supabase.rpc('reject_join', {
+    p_token: token,
+    p_folder_id: folderId,
+    p_user_id: userId,
+  })
+  if (error) throw error
 }
 // 공유 폴더에서 나가기
 export async function leaveFolder(token, folderId) {

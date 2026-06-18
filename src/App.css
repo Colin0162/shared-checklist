@@ -311,6 +311,20 @@
   display: flex;
   gap: 6px;
 }
+.member-panel .section-title:first-child {
+  margin-top: 0;
+}
+/* 초록 안내(참여 요청 보냄 등) — 누르면 닫힘 */
+.info {
+  background: #e7f4ea;
+  border: 1px solid #bfe3c9;
+  color: #15803d;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 0 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
 /* 공유 폴더 안 상단 패널: 참여자 명단(항상) + 나가기/암호변경 */
 .shared-panel {
   background: var(--card);

@@ -17,7 +17,7 @@ import {
   createFolder,
   deleteFolder,
   shareFolder,
-  joinFolder,
+  requestJoin,
   leaveFolder,
   moveBoard,
   moveFolder,
@@ -111,6 +111,7 @@ function App() {
   const [showChangePw, setShowChangePw] = useState(false)
   const [loading, setLoading] = useState(Boolean(supabase))
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('') // 초록 안내(예: 참여 요청 보냄)
 
   const location = useLocation()
   const navigate = useNavigate()
@@ -260,13 +261,13 @@ function App() {
       return e.message
     }
   }
-  // 암호(키워드)로 공유 폴더 참여
+  // 암호(키워드)로 공유 폴더 '참여 요청'(즉시 가입 아님 → 관리자 수락 대기)
   async function doJoinFolder(pw) {
     try {
-      const res = await joinFolder(user.token, pw)
-      if (!res.ok) return res.error || '참여하지 못했습니다.'
-      await reloadFoldersAndBoards()
+      const res = await requestJoin(user.token, pw)
+      if (!res.ok) return res.error || '요청하지 못했습니다.'
       setShowJoin(false)
+      setNotice('참여 요청을 보냈어요. 폴더 관리자가 수락하면 폴더가 나타나요.')
       return null
     } catch (e) {
       return e.message
@@ -425,6 +426,9 @@ function App() {
       />
 
       {(configError || error) && <p className="error">오류: {configError || error}</p>}
+      {notice && (
+        <p className="info" onClick={() => setNotice('')} title="눌러서 닫기">{notice}</p>
+      )}
       {loading && <p className="muted">불러오는 중…</p>}
 
       {!loading && editing && (

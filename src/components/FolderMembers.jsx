@@ -1,29 +1,43 @@
 import { useState, useEffect, useCallback } from 'react'
-import { listFolderMembers, kickMember, transferFolderAdmin } from '../lib/api'
+import {
+  listFolderMembers,
+  kickMember,
+  transferFolderAdmin,
+  listJoinRequests,
+  approveJoin,
+  rejectJoin,
+} from '../lib/api'
 import { displayName } from '../lib/constants'
 import ConfirmModal from './ConfirmModal'
 
 // 공유 폴더 참여자 패널 — 폴더 안 상단에 '항상' 표시(모달 아님).
-//   관리자면 각 참여자 옆에 관리자 넘기기·내보내기.
+//   관리자면: 참여 요청 수락/거부 + 각 참여자 관리자 넘기기·내보내기.
 // props: token, folder, myName, isAdmin, onChanged(권한/구성 바뀌면 폴더 다시 로드)
 function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
   const [members, setMembers] = useState([])
+  const [requests, setRequests] = useState([])
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState(null) // { message, run } 재확인 대상
 
-  // .then 콜백 안에서 set → effect 본문 동기 setState 금지 룰을 피함(앱의 다른 로더와 동일 패턴)
   const load = useCallback(
-    () =>
-      listFolderMembers(token, folder.id)
-        .then(setMembers)
-        .catch((e) => setErr(e.message)),
+    () => listFolderMembers(token, folder.id).then(setMembers).catch((e) => setErr(e.message)),
     [token, folder.id],
+  )
+  const loadRequests = useCallback(
+    () =>
+      isAdmin
+        ? listJoinRequests(token, folder.id).then(setRequests).catch(() => {})
+        : Promise.resolve(),
+    [token, folder.id, isAdmin],
   )
 
   useEffect(() => {
     load()
   }, [load])
+  useEffect(() => {
+    loadRequests()
+  }, [loadRequests])
 
   async function act(fn) {
     setBusy(true)
@@ -31,7 +45,25 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
     try {
       await fn()
       await load()
-      onChanged?.() // 관리자 넘기면 내 권한(my_role)이 바뀌므로 폴더 목록도 갱신
+      onChanged?.()
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function respond(userId, accept) {
+    setBusy(true)
+    setErr('')
+    try {
+      if (accept) await approveJoin(token, folder.id, userId)
+      else await rejectJoin(token, folder.id, userId)
+      await loadRequests()
+      if (accept) {
+        await load()
+        onChanged?.()
+      }
     } catch (e) {
       setErr(e.message)
     } finally {
@@ -41,7 +73,28 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
 
   return (
     <div className="member-panel">
-      <h3 className="section-title" style={{ marginTop: 0 }}>👥 참여자 ({members.length})</h3>
+      {isAdmin && requests.length > 0 && (
+        <>
+          <h3 className="section-title">🙋 참여 요청 ({requests.length})</h3>
+          <ul className="member-list">
+            {requests.map((r) => (
+              <li key={r.user_id} className="member-row">
+                <span className="member-name">{displayName(r.name)}</span>
+                <span className="member-actions">
+                  <button className="btn btn-small" disabled={busy} onClick={() => respond(r.user_id, true)}>
+                    수락
+                  </button>
+                  <button className="btn btn-danger btn-small" disabled={busy} onClick={() => respond(r.user_id, false)}>
+                    거부
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <h3 className="section-title">👥 참여자 ({members.length})</h3>
       {err && <p className="error">오류: {err}</p>}
       <ul className="member-list">
         {members.map((m) => (
@@ -82,6 +135,7 @@ function FolderMembers({ token, folder, myName, isAdmin, onChanged }) {
           </li>
         ))}
       </ul>
+
       {pending && (
         <ConfirmModal
           message={pending.message}
