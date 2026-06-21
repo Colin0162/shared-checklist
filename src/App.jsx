@@ -104,6 +104,7 @@ function App() {
   const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
+  const [editFolderId, setEditFolderId] = useState('') // 편집 시작 시 폴더 기억(주소 바뀌어도 고정)
   const [adminPrompt, setAdminPrompt] = useState(false)
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(null)
@@ -346,17 +347,25 @@ function App() {
 
   function openNew() {
     setEditTarget(null)
+    setEditFolderId(currentFolder?.id || '') // 새 게시글이 생길 폴더 고정
     setEditing(true)
   }
   function openEdit() {
     setEditTarget(openBoard)
+    setEditFolderId(openBoard?.folder_id || '')
     setEditing(true)
   }
   async function handleSaved() {
+    const target = editTarget // 기존 편집이면 그 게시글(저장 후 그리로 복귀)
     setEditing(false)
     try {
-      setBoards(await getBoards(user.token)) // openBoard는 boards에서 파생되어 자동 갱신
-      if (openBoardId) setItems(await getBoardItems(openBoardId)) // 편집된 항목 다시 로드
+      setBoards(await getBoards(user.token))
+      if (target) {
+        setItems(await getBoardItems(target.id))
+        navigate('/board/' + target.id) // 편집한 게시글로 돌아감(홈으로 안 튕김)
+      } else {
+        navigate(folderUrl(editFolderId)) // 새 게시글 → 기억해 둔 폴더로
+      }
     } catch (e) {
       reportError(e.message)
     }
@@ -451,7 +460,7 @@ function App() {
           token={user.token}
           author={user.name}
           adminPw={adminPw}
-          folderId={currentFolder?.id || ''}
+          folderId={editFolderId}
           board={editTarget}
           originalItems={editTarget ? items : []}
           nextSortOrder={nextSortOrder}
