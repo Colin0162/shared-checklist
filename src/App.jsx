@@ -167,6 +167,14 @@ function App() {
   const chat = useFolderChat(chatFolder?.id, user?.token, Boolean(chatFolder))
   const chatOpen = Boolean(chatFolder && chatOpenFor === chatFolder.id)
 
+  // 편집/작성 중 브라우저 '뒤로가기' → 그 화면에서 나감(편집 닫기). 저장/취소는 영향 없음
+  useEffect(() => {
+    if (!editing) return
+    const onPop = () => setEditing(false)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [editing])
+
   // 보이는 폴더/게시글은 토큰에 따라 달라지므로 로그인(토큰 변경) 때 다시 로드
   useEffect(() => {
     if (!supabase) return
