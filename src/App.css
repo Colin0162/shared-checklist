@@ -857,8 +857,12 @@
   line-height: 1.45;
 }
 .item-qty {
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+  color: #15803d;
+  background: var(--done-weak);
+  border-radius: 999px;
+  padding: 2px 10px;
 }
 .item-by {
   font-size: 12px;
