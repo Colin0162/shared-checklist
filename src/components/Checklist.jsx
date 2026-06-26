@@ -48,6 +48,7 @@ function Checklist({
 }) {
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
   const [assigneeFilter, setAssigneeFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const mode = board.mode
   const isTodo = mode === 'todo'
   const isTable = mode === 'table'
@@ -67,6 +68,7 @@ function Checklist({
   const doneLabel = mode === 'check' ? '완료' : '평가함'
 
   const groups = groupItems(items, board.categories)
+  const categories = groups.map((g) => g.name).filter(Boolean) // 이름 있는 대항목만
   const visible = (it) =>
     (!unfinishedOnly || !isDone(it, mode)) && (!assigneeFilter || it.assignee === assigneeFilter)
 
@@ -119,15 +121,17 @@ function Checklist({
         <TableView data={board.table_data} />
       ) : (
         <>
-          {!isTodo && (
+          {(!isTodo || categories.length > 0) && (
             <div className="toolbar">
-              <button
-                className={'btn' + (unfinishedOnly ? ' btn-primary' : '')}
-                onClick={() => setUnfinishedOnly((v) => !v)}
-              >
-                {unfinishedOnly ? '전체 보기' : '미완료만 보기'}
-              </button>
-              {assignees.length > 0 && (
+              {!isTodo && (
+                <button
+                  className={'btn' + (unfinishedOnly ? ' btn-primary' : '')}
+                  onClick={() => setUnfinishedOnly((v) => !v)}
+                >
+                  {unfinishedOnly ? '전체 보기' : '미완료만 보기'}
+                </button>
+              )}
+              {!isTodo && assignees.length > 0 && (
                 <select
                   className="text-input filter-select"
                   value={assigneeFilter}
@@ -141,10 +145,25 @@ function Checklist({
                   ))}
                 </select>
               )}
+              {categories.length > 0 && (
+                <select
+                  className="text-input filter-select"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  <option value="">대항목 전체</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
           {groups.map((group) => {
+            if (categoryFilter && group.name !== categoryFilter) return null
             const gTotal = group.items.length
             const gDone = group.items.filter((it) => isDone(it, mode)).length
             const shown = group.items.filter(visible)
