@@ -540,8 +540,15 @@
   border-radius: var(--radius);
   padding: 14px;
 }
+/* 안내 문구: 창을 벗어나지 않게 줄바꿈 허용 (.row-note 는 nowrap 이라 안 씀) */
 .ai-hint {
   margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .ai-actions {
   display: flex;

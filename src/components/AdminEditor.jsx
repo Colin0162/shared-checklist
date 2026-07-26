@@ -606,9 +606,10 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
       {/* 글로 한 번에 만들기 — 적어 넣으면 대항목·항목·수량으로 자동 정리 */}
       <div className="field ai-box">
         <span className="field-label">⚡ 글로 한 번에 만들기</span>
-        <p className="row-note ai-hint">
-          아래처럼 적고 버튼을 누르면 항목이 한 번에 만들어져요. (‘분류:’ 는 대항목, 쉼표로 구분,
-          끝의 숫자는 수량)
+        <p className="ai-hint">
+          아래처럼 적고 버튼을 누르면 항목이 한 번에 만들어져요.
+          <br />
+          ‘분류:’ 는 대항목, 쉼표로 구분, 끝의 숫자는 수량이 돼요.
         </p>
         <textarea
           className="text-input"
@@ -619,7 +620,7 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         />
         <div className="ai-actions">
           <button className="btn btn-primary" onClick={runAi}>항목 만들기</button>
-          {aiMsg && <span className="row-note">{aiMsg}</span>}
+          {aiMsg && <span className="ai-hint">{aiMsg}</span>}
         </div>
       </div>
 
