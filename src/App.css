@@ -533,6 +533,23 @@
   align-items: center;
   margin-top: 2px;
 }
+/* AI로 항목 만들기 */
+.ai-box {
+  background: var(--accent-weak);
+  border: 1px solid #d9d5fb;
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.ai-hint {
+  margin: 0 0 8px;
+}
+.ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
 .notice-toggle {
   display: flex;
   align-items: center;

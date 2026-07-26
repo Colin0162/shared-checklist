@@ -18,4 +18,9 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // api/ 는 브라우저가 아니라 서버(Vercel 서버리스 함수) 코드 → Node 전역 사용
+    files: ['api/**/*.js'],
+    languageOptions: { globals: globals.node },
+  },
 ])

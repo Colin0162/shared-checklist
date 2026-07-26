@@ -7,6 +7,7 @@ import {
   saveTemplate,
   deleteTemplate,
   setEntryPassword,
+  parseChecklistText,
 } from '../lib/api'
 import ConfirmModal from './ConfirmModal'
 
@@ -75,6 +76,59 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
       setEntryMsg('오류: ' + e.message)
     } finally {
       setEntryBusy(false)
+    }
+  }
+
+  // AI로 항목 만들기: 자유롭게 쓴 글 → 대항목·항목·수량으로 채워 넣기
+  const [aiText, setAiText] = useState('')
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiMsg, setAiMsg] = useState('')
+
+  async function runAi() {
+    if (!aiText.trim()) {
+      setAiMsg('내용을 입력하세요.')
+      return
+    }
+    setAiBusy(true)
+    setAiMsg('')
+    try {
+      const res = await parseChecklistText(token, aiText.trim())
+      const newItems = (res.items || []).filter((it) => (it.label || '').trim())
+      if (newItems.length === 0) {
+        setAiMsg('항목을 찾지 못했어요. 조금 더 자세히 적어보세요.')
+        return
+      }
+      // 대항목: 기존에 없는 이름만 추가
+      setCategories((prev) => {
+        const have = new Set(prev.map((c) => c.name.trim()).filter(Boolean))
+        const add = []
+        for (const name of res.categories || []) {
+          const n = String(name).trim()
+          if (n && !have.has(n)) {
+            have.add(n)
+            add.push({ key: newKey(), name: n })
+          }
+        }
+        return [...prev, ...add]
+      })
+      // 항목: 기존 목록 뒤에 이어 붙임(기존 것은 그대로 둠)
+      setRows((prev) => [
+        ...prev,
+        ...newItems.map((it) => ({
+          key: newKey(),
+          group_name: (it.group_name || '').trim(),
+          label: (it.label || '').trim(),
+          quantity: (it.quantity || '').trim(),
+          show_note: false,
+          assignee: '',
+        })),
+      ])
+      setAiText('')
+      setAiMsg(`${newItems.length}개 항목을 추가했어요. 아래에서 고칠 수 있어요.`)
+    } catch (e) {
+      setAiMsg('오류: ' + e.message)
+    } finally {
+      setAiBusy(false)
     }
   }
 
@@ -549,6 +603,28 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         </div>
       ) : (
         <>
+      {/* AI로 항목 만들기 — 글로 적으면 알아서 항목·수량으로 정리 */}
+      <div className="field ai-box">
+        <span className="field-label">✨ AI로 항목 만들기</span>
+        <p className="row-note ai-hint">
+          준비물을 편하게 적어보세요. 예) 음식: 수박 1개, 라면 5봉지 / 식기: 젓가락 5쌍, 숟가락 5개
+        </p>
+        <textarea
+          className="text-input"
+          rows={3}
+          value={aiText}
+          onChange={(e) => setAiText(e.target.value)}
+          placeholder="준비물을 자유롭게 적어주세요"
+          disabled={aiBusy}
+        />
+        <div className="ai-actions">
+          <button className="btn btn-primary" onClick={runAi} disabled={aiBusy}>
+            {aiBusy ? '만드는 중…' : '항목 만들기'}
+          </button>
+          {aiMsg && <span className="row-note">{aiMsg}</span>}
+        </div>
+      </div>
+
       {/* 대항목(카테고리) */}
       <div className="field">
         <span className="field-label">대항목 (카테고리)</span>
