@@ -246,19 +246,6 @@ export async function transferFolderAdmin(token, folderId, userId) {
   if (error) throw error
 }
 
-// ── AI: 자유롭게 쓴 글 → 체크리스트 항목 (Vercel 서버리스 함수) ──
-// 서버가 ANTHROPIC_API_KEY를 들고 있고, 여기선 토큰과 글만 보낸다.
-export async function parseChecklistText(token, text) {
-  const res = await fetch('/api/parse-checklist', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, text }),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'AI 변환에 실패했습니다.')
-  return data // { categories: [이름...], items: [{group_name,label,quantity}] }
-}
-
 // ── 공유 폴더 채팅 ──
 export async function listMessages(token, folderId, limit = 200) {
   const { data, error } = await supabase.rpc('list_messages', {

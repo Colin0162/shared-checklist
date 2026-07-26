@@ -7,8 +7,8 @@ import {
   saveTemplate,
   deleteTemplate,
   setEntryPassword,
-  parseChecklistText,
 } from '../lib/api'
+import { parseChecklistText } from '../lib/parseText'
 import ConfirmModal from './ConfirmModal'
 
 let seq = 0
@@ -79,23 +79,21 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
     }
   }
 
-  // AI로 항목 만들기: 자유롭게 쓴 글 → 대항목·항목·수량으로 채워 넣기
+  // 글로 한 번에 만들기: 자유롭게 쓴 글 → 대항목·항목·수량으로 채워 넣기(무료·즉시)
   const [aiText, setAiText] = useState('')
-  const [aiBusy, setAiBusy] = useState(false)
   const [aiMsg, setAiMsg] = useState('')
 
-  async function runAi() {
+  function runAi() {
     if (!aiText.trim()) {
       setAiMsg('내용을 입력하세요.')
       return
     }
-    setAiBusy(true)
     setAiMsg('')
-    try {
-      const res = await parseChecklistText(token, aiText.trim())
+    {
+      const res = parseChecklistText(aiText)
       const newItems = (res.items || []).filter((it) => (it.label || '').trim())
       if (newItems.length === 0) {
-        setAiMsg('항목을 찾지 못했어요. 조금 더 자세히 적어보세요.')
+        setAiMsg('항목을 찾지 못했어요. 예시처럼 적어보세요.')
         return
       }
       // 대항목: 기존에 없는 이름만 추가
@@ -125,10 +123,6 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
       ])
       setAiText('')
       setAiMsg(`${newItems.length}개 항목을 추가했어요. 아래에서 고칠 수 있어요.`)
-    } catch (e) {
-      setAiMsg('오류: ' + e.message)
-    } finally {
-      setAiBusy(false)
     }
   }
 
@@ -395,14 +389,20 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
             <input type="radio" name="mode" checked={mode === 'rate'} onChange={() => setMode('rate')} />
             상·중·하 평가
           </label>
-          <label>
-            <input type="radio" name="mode" checked={mode === 'todo'} onChange={() => setMode('todo')} />
-            할 일 리스트
-          </label>
-          <label>
-            <input type="radio" name="mode" checked={mode === 'table'} onChange={() => setMode('table')} />
-            표
-          </label>
+          {/* '할 일 리스트'·'표'는 새로 만들 때는 없앰(정리).
+              예전에 그 형식으로 만든 게시글은 그대로 열리고 수정되도록 남겨둔다. */}
+          {mode === 'todo' && (
+            <label>
+              <input type="radio" name="mode" checked readOnly />
+              할 일 리스트 <span className="row-note">(예전 형식)</span>
+            </label>
+          )}
+          {mode === 'table' && (
+            <label>
+              <input type="radio" name="mode" checked readOnly />
+              표 <span className="row-note">(예전 형식)</span>
+            </label>
+          )}
         </div>
       </div>
 
@@ -603,24 +603,22 @@ function AdminEditor({ token, author, adminPw, folderId, board, originalItems, n
         </div>
       ) : (
         <>
-      {/* AI로 항목 만들기 — 글로 적으면 알아서 항목·수량으로 정리 */}
+      {/* 글로 한 번에 만들기 — 적어 넣으면 대항목·항목·수량으로 자동 정리 */}
       <div className="field ai-box">
-        <span className="field-label">✨ AI로 항목 만들기</span>
+        <span className="field-label">⚡ 글로 한 번에 만들기</span>
         <p className="row-note ai-hint">
-          준비물을 편하게 적어보세요. 예) 음식: 수박 1개, 라면 5봉지 / 식기: 젓가락 5쌍, 숟가락 5개
+          아래처럼 적고 버튼을 누르면 항목이 한 번에 만들어져요. (‘분류:’ 는 대항목, 쉼표로 구분,
+          끝의 숫자는 수량)
         </p>
         <textarea
           className="text-input"
           rows={3}
           value={aiText}
           onChange={(e) => setAiText(e.target.value)}
-          placeholder="준비물을 자유롭게 적어주세요"
-          disabled={aiBusy}
+          placeholder={'음식: 수박 1개, 라면 5봉지\n식기: 젓가락 5쌍, 숟가락 5개'}
         />
         <div className="ai-actions">
-          <button className="btn btn-primary" onClick={runAi} disabled={aiBusy}>
-            {aiBusy ? '만드는 중…' : '항목 만들기'}
-          </button>
+          <button className="btn btn-primary" onClick={runAi}>항목 만들기</button>
           {aiMsg && <span className="row-note">{aiMsg}</span>}
         </div>
       </div>
