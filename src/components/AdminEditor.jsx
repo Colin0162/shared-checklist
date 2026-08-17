@@ -6,6 +6,7 @@ import {
   getTemplates,
   saveTemplate,
   deleteTemplate,
+  setEntryPassword,
 } from '../lib/api'
 import { parseChecklistText } from '../lib/parseText'
 import ConfirmModal from './ConfirmModal'
@@ -24,9 +25,11 @@ function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSort
   const [mode, setMode] = useState(board?.mode ?? 'check')
   const [eventDate, setEventDate] = useState(board?.event_date ?? '')
 
-  // 새 게시글일 때만: 관리자 비밀번호 설정
+  // 새 게시글일 때만: 관리자 비밀번호 + 입장 비밀번호(선택)
   const [newAdminPw, setNewAdminPw] = useState('')
   const [showAdminPw, setShowAdminPw] = useState(false)
+  const [newEntryPw, setNewEntryPw] = useState('')
+  const [showEntryPw, setShowEntryPw] = useState(false)
 
   // 대항목(카테고리): [{ key, name }]
   const [categories, setCategories] = useState(() =>
@@ -49,6 +52,30 @@ function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSort
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // 편집 화면: 입장 비밀번호 추가/변경/삭제 (관리자 비번으로 확인)
+  const [entryEditPw, setEntryEditPw] = useState('')
+  const [showEntryEdit, setShowEntryEdit] = useState(false)
+  const [entryBusy, setEntryBusy] = useState(false)
+  const [entryMsg, setEntryMsg] = useState('')
+
+  async function applyEntryPw(remove) {
+    setEntryMsg('')
+    if (!remove && !entryEditPw.trim()) {
+      setEntryMsg('새 입장 비밀번호를 입력하세요.')
+      return
+    }
+    setEntryBusy(true)
+    try {
+      await setEntryPassword(board.id, adminPw, remove ? '' : entryEditPw.trim())
+      setEntryMsg(remove ? '입장 비밀번호를 없앴어요(누구나 입장).' : '입장 비밀번호를 적용했어요.')
+      setEntryEditPw('')
+    } catch (e) {
+      setEntryMsg('오류: ' + e.message)
+    } finally {
+      setEntryBusy(false)
+    }
+  }
 
   // 글로 한 번에 만들기: 자유롭게 쓴 글 → 대항목·항목·수량으로 채워 넣기(무료·즉시)
   const [aiText, setAiText] = useState('')
@@ -296,7 +323,7 @@ function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSort
         boardPayload.table_data = { columns: tableColumns, rows: tableRows }
       }
       if (isNew) {
-        await createBoard(author, boardPayload, itemsPayload, newAdminPw.trim())
+        await createBoard(author, boardPayload, itemsPayload, newAdminPw.trim(), newEntryPw.trim())
       } else {
         await updateBoard(board.id, adminPw, boardPayload, itemsPayload)
       }
@@ -422,6 +449,70 @@ function AdminEditor({ author, adminPw, folderId, board, originalItems, nextSort
             </button>
           </div>
         </label>
+      )}
+
+      {isNew && (
+        <label className="field">
+          <span className="field-label">입장 비밀번호 (선택 — 비우면 누구나 입장)</span>
+          <p className="ai-hint">
+            걸어두면 목록에서 🔒 로 보이고 들어올 때 비밀번호를 물어요.
+            <br />
+            단, 게시글 안의 <b>‘🔗 링크 복사’</b>로 만든 링크를 받은 사람은 비밀번호 없이 들어와요.
+          </p>
+          <div className="pw-field">
+            <input
+              className="text-input"
+              type={showEntryPw ? 'text' : 'password'}
+              value={newEntryPw}
+              onChange={(e) => setNewEntryPw(e.target.value)}
+              placeholder="입장 비밀번호 (안 쓰면 비워두세요)"
+            />
+            <button
+              type="button"
+              className="pw-eye"
+              onClick={() => setShowEntryPw((v) => !v)}
+              title={showEntryPw ? '숨기기' : '보기'}
+            >
+              {showEntryPw ? '🙈' : '👁'}
+            </button>
+          </div>
+        </label>
+      )}
+
+      {!isNew && (
+        <div className="field">
+          <span className="field-label">
+            입장 비밀번호 {board?.has_entry_password ? '(현재: 걸려 있음 🔒)' : '(현재: 없음 — 누구나 입장)'}
+          </span>
+          <div className="pw-field">
+            <input
+              className="text-input"
+              type={showEntryEdit ? 'text' : 'password'}
+              value={entryEditPw}
+              onChange={(e) => setEntryEditPw(e.target.value)}
+              placeholder={board?.has_entry_password ? '새 입장 비밀번호' : '입장 비밀번호'}
+            />
+            <button
+              type="button"
+              className="pw-eye"
+              onClick={() => setShowEntryEdit((v) => !v)}
+              title={showEntryEdit ? '숨기기' : '보기'}
+            >
+              {showEntryEdit ? '🙈' : '👁'}
+            </button>
+          </div>
+          <div className="ai-actions">
+            <button className="btn" onClick={() => applyEntryPw(false)} disabled={entryBusy}>
+              적용
+            </button>
+            {board?.has_entry_password && (
+              <button className="btn btn-danger" onClick={() => applyEntryPw(true)} disabled={entryBusy}>
+                비밀번호 없애기
+              </button>
+            )}
+            {entryMsg && <span className="ai-hint">{entryMsg}</span>}
+          </div>
+        </div>
       )}
 
       {mode === 'table' ? (

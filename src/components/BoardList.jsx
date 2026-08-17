@@ -13,7 +13,10 @@ function BoardList({ boards, onOpen, onMove }) {
       {boards.map((b) => (
         <li key={b.id} className="board-row">
           <button className="board-card" onClick={() => onOpen(b)}>
-            <span className="board-title">{b.title}</span>
+            <span className="board-title">
+              {b.has_entry_password && <span className="lock" title="비밀번호 입장">🔒 </span>}
+              {b.title}
+            </span>
             <span className="board-meta">
               {b.mode === 'check'
                 ? '체크리스트'

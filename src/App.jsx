@@ -12,6 +12,7 @@ import {
   getBoardItems,
   resetBoard,
   verifyBoardAdmin,
+  verifyBoardEntry,
   deleteBoard,
   getFolders,
   createFolder,
@@ -87,6 +88,8 @@ function App() {
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState(null)
   const [moveBoardTarget, setMoveBoardTarget] = useState(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState(null)
+  const [verifiedBoards, setVerifiedBoards] = useState(() => new Set()) // 입장 통과한 게시글 id
+  const [shareKey, setShareKey] = useState(null) // { boardId, key } 공유 열쇠(링크 복사용)
   const [admin, setAdmin] = useState(null) // { boardId, pw } 관리자 모드(그 게시글에서만 유효)
   const [editing, setEditing] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
@@ -110,10 +113,22 @@ function App() {
   const currentFolder = folderPath.length ? folderPath[folderPath.length - 1] : null
   const currentBoards = boards.filter((b) => (b.folder_id || null) === (currentFolder?.id || null))
 
-  // 열린 게시글: URL boardId로 결정 (입장 비번 없음 — 링크만 있으면 열림)
-  const openBoard = routeBoardId ? boards.find((b) => String(b.id) === routeBoardId) || null : null
+  // 열린 게시글: URL boardId로 결정.
+  //   🔒 걸린 게시글은 '입장 비밀번호' 또는 '공유 링크의 열쇠(?k=)'를 통과해야 열림.
+  const linkKey = new URLSearchParams(location.search).get('k') || ''
+  const targetBoard = routeBoardId ? boards.find((b) => String(b.id) === routeBoardId) || null : null
+  const needsEntry = Boolean(
+    targetBoard && targetBoard.has_entry_password && !verifiedBoards.has(String(targetBoard.id)),
+  )
+  const openBoard = targetBoard && !needsEntry ? targetBoard : null
   const openBoardId = openBoard ? openBoard.id : null
   const adminPw = admin && openBoard && admin.boardId === openBoard.id ? admin.pw : null
+  // 공유 링크: 잠긴 게시글은 열쇠(?k=)를 붙이고, 안 잠긴 건 그냥 주소
+  const myKey = shareKey && openBoardId && shareKey.boardId === openBoardId ? shareKey.key : ''
+  const shareUrl = openBoard
+    ? `${location.origin}/board/${openBoard.id}` +
+      (openBoard.has_entry_password && myKey ? `?k=${myKey}` : '')
+    : ''
 
   // 에러를 화면에 표시 + 서버에 기록. 기록은 베스트에포트
   const reportError = useCallback((msg) => {
@@ -125,6 +140,22 @@ function App() {
   const { items, setItems, boardReady, saveErrors, handleSetStatus, handleSetNote, retrySave } =
     useBoardItems(openBoardId, name, reportError)
   const { noteLocks, sendNoteLock } = useNoteLocks(openBoardId, name)
+
+  // 공유 링크(?k=)로 들어온 경우: 열쇠로 자동 입장 (비번 안 물어봄)
+  useEffect(() => {
+    if (!needsEntry || !linkKey || !targetBoard) return
+    let alive = true
+    verifyBoardEntry(targetBoard.id, '', linkKey)
+      .then((res) => {
+        if (!alive || !res?.ok) return
+        setVerifiedBoards((prev) => new Set(prev).add(String(targetBoard.id)))
+        setShareKey({ boardId: targetBoard.id, key: res.key })
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [needsEntry, linkKey, targetBoard])
 
   // 편집/작성 중 브라우저 '뒤로가기' → 그 화면에서 나감(편집 닫기)
   useEffect(() => {
@@ -243,12 +274,27 @@ function App() {
     navigate(folderUrl(openBoard?.folder_id))
   }
 
+  // 입장 비밀번호 통과 → 열림 + 공유 열쇠 보관(링크 복사용)
+  async function submitEntry(pw) {
+    if (!targetBoard) return '게시글을 찾을 수 없습니다.'
+    try {
+      const res = await verifyBoardEntry(targetBoard.id, pw, '')
+      if (!res.ok) return res.error || '실패'
+      setVerifiedBoards((prev) => new Set(prev).add(String(targetBoard.id)))
+      setShareKey({ boardId: targetBoard.id, key: res.key })
+      return null
+    } catch (e) {
+      return e.message
+    }
+  }
+
   // 관리자 모드 진입 (해당 게시글에서만 유효 — admin.boardId로 묶음)
   async function submitAdmin(pw) {
     try {
       const res = await verifyBoardAdmin(openBoard.id, pw)
       if (!res.ok) return res.error || '실패'
       setAdmin({ boardId: openBoard.id, pw })
+      if (res.key) setShareKey({ boardId: openBoard.id, key: res.key })
       setAdminPrompt(false)
       return null
     } catch (e) {
@@ -368,6 +414,15 @@ function App() {
       {/* 게시글 진입했지만 항목 로드 전 */}
       {!loading && !editing && openBoard && !boardReady && <p className="muted">불러오는 중…</p>}
 
+      {/* 🔒 잠긴 게시글 — 입장 비밀번호 (공유 링크로 왔으면 이 창은 안 뜸) */}
+      {!loading && !editing && needsEntry && targetBoard && !linkKey && (
+        <PasswordPrompt
+          title={`'${targetBoard.title}' 입장 비밀번호`}
+          onSubmit={submitEntry}
+          onCancel={() => navigate(folderUrl(targetBoard.folder_id))}
+        />
+      )}
+
       {!loading && !editing && boardReady && (
         <Checklist
           board={openBoard}
@@ -379,6 +434,7 @@ function App() {
           onEdit={openEdit}
           onReset={() => setConfirmReset(true)}
           onDeleteBoard={() => setConfirmDeleteOwnBoard(true)}
+          shareUrl={shareUrl}
           onSetStatus={handleSetStatus}
           onSetNote={handleSetNote}
           noteLocks={noteLocks}

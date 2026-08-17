@@ -38,6 +38,7 @@ function Checklist({
   onEdit,
   onReset,
   onDeleteBoard,
+  shareUrl,
   onSetStatus,
   onSetNote,
   noteLocks,
@@ -49,6 +50,15 @@ function Checklist({
   const [unfinishedOnly, setUnfinishedOnly] = useState(false)
   const [assigneeFilter, setAssigneeFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // 공유 링크 복사 — 잠긴 게시글이면 열쇠(?k=)가 붙어 있어 받는 사람은 비번 없이 입장
+  function copyLink() {
+    navigator.clipboard
+      ?.writeText(shareUrl)
+      .then(() => setCopied(true))
+      .catch(() => setCopied(false))
+  }
   const mode = board.mode
   const isTodo = mode === 'todo'
   const isTable = mode === 'table'
@@ -81,6 +91,11 @@ function Checklist({
           <h2 className="board-heading">{board.title}</h2>
           {board.event_date && <span className="dday">{ddayLabel(board.event_date)}</span>}
           <div className="head-actions">
+            {shareUrl && (
+              <button className="btn btn-small" onClick={copyLink} title="이 게시글 링크 복사">
+                {copied ? '✅ 복사됨' : '🔗 링크 복사'}
+              </button>
+            )}
             <button
               className="btn btn-small"
               onClick={() => window.print()}

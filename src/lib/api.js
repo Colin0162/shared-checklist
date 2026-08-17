@@ -17,7 +17,7 @@ export async function getBoards() {
   const { data, error } = await supabase
     .from('boards')
     .select(
-      'id, title, description, mode, categories, created_by, memo, folder_id, event_date, table_data, sort_order',
+      'id, title, description, mode, categories, created_by, has_entry_password, memo, folder_id, event_date, table_data, sort_order',
     )
     .order('sort_order')
   if (error) throw error
@@ -76,12 +76,13 @@ export async function setMemo(boardId, memo) {
 }
 
 // ── 게시글 (관리자 비밀번호로 확인) ──
-export async function createBoard(author, board, items, adminPw) {
+export async function createBoard(author, board, items, adminPw, entryPw) {
   const { data, error } = await supabase.rpc('create_board', {
     p_author: author,
     p_board: board,
     p_items: items,
     p_admin_pw: adminPw,
+    p_entry_pw: entryPw || '',
   })
   if (error) throw error
   return data
@@ -106,7 +107,26 @@ export async function resetBoard(boardId, pw) {
 export async function verifyBoardAdmin(boardId, pw) {
   const { data, error } = await supabase.rpc('verify_board_admin', { p_board_id: boardId, p_pw: pw })
   if (error) throw error
-  return data
+  return data // { ok, key } — key는 공유 링크 만들 때 사용
+}
+// 입장 확인: 입장 비밀번호 또는 공유 링크의 열쇠(k) 둘 중 하나면 통과
+export async function verifyBoardEntry(boardId, pw, key) {
+  const { data, error } = await supabase.rpc('verify_board_entry', {
+    p_board_id: boardId,
+    p_pw: pw || '',
+    p_key: key || '',
+  })
+  if (error) throw error
+  return data // { ok, key } | { ok:false, error }
+}
+// 입장 비밀번호 추가/변경/삭제 (빈 값이면 삭제=누구나 입장). 관리자 비번으로 확인
+export async function setEntryPassword(boardId, adminPw, newEntry) {
+  const { error } = await supabase.rpc('set_entry_password', {
+    p_board_id: boardId,
+    p_admin_pw: adminPw,
+    p_new_entry: newEntry,
+  })
+  if (error) throw error
 }
 
 // ── 폴더 (모두 공개) ──
