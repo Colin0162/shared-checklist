@@ -2,17 +2,11 @@ import { useState } from 'react'
 import FolderList from './FolderList'
 import BoardList from './BoardList'
 
-// 폴더/게시글 목록 화면.
-//   홈(최상위)에서는 폴더를 공유/개인/공개로 분류해 보여주고, '공유 폴더 참여' 입력을 제공.
-//   공유 폴더 안에서는 상단에 참여자 패널(항상 표시) + 나가기/암호변경.
-//   가시성 필터는 서버(RPC)가 끝냄 → folders/boards에는 '내가 볼 수 있는 것'만 들어온다.
-// props: user, folders, boards, folderPath, currentFolder, currentBoards,
-//        onGoHome, onGoFolder(id), onNewFolder(name), onJoinFolder, onShareFolder(f),
-//        onMoveFolder(f), onMoveBoard(b), onDeleteFolder(f),
-//        onShowPending, onNewBoard, onOpenBoard(b), onDeleteBoard(b)
-//   (공유 폴더의 참여자/채팅/나가기는 App의 채팅 패널에서 다룬다)
+// 폴더/게시글 목록 화면. 로그인이 없으므로 모든 폴더가 누구에게나 보인다.
+// props: folders, boards, folderPath, currentFolder, currentBoards,
+//        onGoHome, onGoFolder(id), onNewFolder(name), onMoveFolder(f), onMoveBoard(b),
+//        onDeleteFolder(f), onNewBoard, onOpenBoard(b)
 function FolderView({
-  user,
   folders,
   boards,
   folderPath,
@@ -21,48 +15,20 @@ function FolderView({
   onGoHome,
   onGoFolder,
   onNewFolder,
-  onJoinFolder,
-  onShareFolder,
   onMoveFolder,
   onMoveBoard,
   onDeleteFolder,
-  onShowPending,
   onNewBoard,
   onOpenBoard,
-  onDeleteBoard,
 }) {
   const [adding, setAdding] = useState(false)
   const [name, setName] = useState('')
 
-  const atHome = !currentFolder
   const children = folders.filter((f) => (f.parent_id || null) === (currentFolder?.id || null))
-  const shared = children.filter((f) => f.visibility === 'shared')
-  const mine = children.filter((f) => f.visibility === 'private')
-  const open = children.filter((f) => f.visibility === 'public')
-
   const hasChildren = (id) => folders.some((c) => c.parent_id === id)
   const hasBoards = (id) => boards.some((b) => b.folder_id === id)
-
-  // 공유 버튼: 내 개인 최상위 폴더만(공유 폴더의 암호 변경은 폴더 안 패널에서)
-  const canShare = (f) => !f.parent_id && f.visibility === 'private' && f.owner === user.name
-  // 이동 버튼: 개인 폴더만(공유·공개는 최상위 고정). 목록에 보인다는 건 접근 권한이 있다는 뜻
-  const canMove = (f) => f.visibility === 'private'
-  // 삭제 버튼: 빈 폴더만. 공개는 사이트관리자, 그 외는 볼 수 있는 사람(=목록에 보이면 가능)
-  const canDelete = (f) => {
-    if (hasChildren(f.id) || hasBoards(f.id)) return false
-    if (f.visibility === 'public') return Boolean(user.is_site_admin)
-    return true
-  }
-
-  const listProps = {
-    onOpen: (f) => onGoFolder(f.id),
-    onShare: onShareFolder,
-    onMove: onMoveFolder,
-    onDelete: onDeleteFolder,
-    canShare,
-    canMove,
-    canDelete,
-  }
+  // 삭제는 '비어 있는 폴더'만 (안에 든 게 있으면 실수 방지)
+  const canDelete = (f) => !hasChildren(f.id) && !hasBoards(f.id)
 
   async function submitNew() {
     if (!name.trim()) return
@@ -84,18 +50,8 @@ function FolderView({
         ))}
       </nav>
 
-      {user.is_site_admin && atHome && (
-        <div className="list-head">
-          <button className="btn" onClick={onShowPending}>계정 관리</button>
-        </div>
-      )}
-
-      {/* 만들기 / (홈에서만) 참여 */}
       <div className="folder-bar">
         <button className="btn btn-primary" onClick={() => setAdding((v) => !v)}>+ 새 폴더</button>
-        {atHome && (
-          <button className="btn" onClick={onJoinFolder}>🔑 공유 폴더 참여</button>
-        )}
       </div>
       {adding && (
         <div className="folder-new">
@@ -111,50 +67,27 @@ function FolderView({
         </div>
       )}
 
-      {atHome ? (
+      <FolderList
+        folders={children}
+        onOpen={(f) => onGoFolder(f.id)}
+        onMove={onMoveFolder}
+        onDelete={onDeleteFolder}
+        canDelete={canDelete}
+      />
+
+      {/* 게시글은 폴더 안에서만 만든다 */}
+      {currentFolder ? (
         <>
-          {shared.length > 0 && (
-            <>
-              <h3 className="section-title">🤝 공유 폴더</h3>
-              <FolderList folders={shared} {...listProps} />
-            </>
-          )}
-          <h3 className="section-title">🔒 내 폴더</h3>
-          {mine.length > 0 ? (
-            <FolderList folders={mine} {...listProps} />
-          ) : (
-            <p className="muted">아직 만든 폴더가 없습니다. ‘+ 새 폴더’로 만들어 보세요.</p>
-          )}
-          {open.length > 0 && (
-            <>
-              <h3 className="section-title">📁 공개</h3>
-              <FolderList folders={open} {...listProps} />
-            </>
-          )}
-          {/* 혹시 남아있는 옛 루트 게시글 */}
-          {currentBoards.length > 0 && (
-            <BoardList
-              boards={currentBoards}
-              onOpen={onOpenBoard}
-              siteAdmin={Boolean(user.is_site_admin)}
-              onDelete={onDeleteBoard}
-            />
-          )}
-        </>
-      ) : (
-        <>
-          <FolderList folders={children} {...listProps} />
           <div className="list-head list-head-boards">
             <button className="btn btn-primary" onClick={onNewBoard}>+ 새 게시글</button>
           </div>
-          <BoardList
-            boards={currentBoards}
-            onOpen={onOpenBoard}
-            siteAdmin={Boolean(user.is_site_admin)}
-            onDelete={onDeleteBoard}
-            onMove={onMoveBoard}
-          />
+          <BoardList boards={currentBoards} onOpen={onOpenBoard} onMove={onMoveBoard} />
         </>
+      ) : (
+        // 홈: 폴더만. 혹시 옛 루트 게시글이 있으면 그것만 보여줌
+        currentBoards.length > 0 && (
+          <BoardList boards={currentBoards} onOpen={onOpenBoard} onMove={onMoveBoard} />
+        )
       )}
     </>
   )

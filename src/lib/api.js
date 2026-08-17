@@ -1,23 +1,33 @@
 import { supabase } from './supabase'
 
-// 인증 (토큰 없음 — 이름만 보관)
-export async function register(name, pin) {
-  const { data, error } = await supabase.rpc('register', { p_name: name, p_pin: pin })
-  if (error) throw error
-  return data // { ok, name } | { ok:false, error }
-}
-export async function login(name, pin) {
-  const { data, error } = await supabase.rpc('login', { p_name: name, p_pin: pin })
-  if (error) throw error
-  return data
+// 로그인 없음. 이름만 기기에 저장해서 '체크한 사람' 표시에 쓴다.
+// 폴더·게시글은 누구나 조회, 게시글 편집/삭제만 '관리자 비밀번호'로 확인.
+
+// 현재 이름(localStorage) — 오류 기록 등 내부에서 사용
+function currentName() {
+  try {
+    return localStorage.getItem('name') || ''
+  } catch {
+    return ''
+  }
 }
 
 // ── 읽기 ──
-// 게시글은 '보이는 폴더'의 것만 서버(RPC)가 내려줌 → 안 보이는 폴더 게시글은 숨겨짐.
-// 토큰이 없으면(로그인 전) 호출하지 않음 — 인자 없이 호출하면 RPC를 못 찾는 오류가 남.
-export async function getBoards(token) {
-  if (!token) return []
-  const { data, error } = await supabase.rpc('list_visible_boards', { p_token: token })
+export async function getBoards() {
+  const { data, error } = await supabase
+    .from('boards')
+    .select(
+      'id, title, description, mode, categories, created_by, memo, folder_id, event_date, table_data, sort_order',
+    )
+    .order('sort_order')
+  if (error) throw error
+  return data
+}
+export async function getFolders() {
+  const { data, error } = await supabase
+    .from('folders')
+    .select('id, name, parent_id, sort_order')
+    .order('sort_order')
   if (error) throw error
   return data
 }
@@ -33,21 +43,12 @@ export async function getBoardItems(boardId) {
   return data
 }
 
-// ── 에러 로깅(가벼운 버전) ──
-// 현재 로그인 토큰을 localStorage에서 직접 읽어, 사용자가 본 에러를 서버에 남긴다.
-function currentToken() {
-  try {
-    return JSON.parse(localStorage.getItem('user'))?.token || null
-  } catch {
-    return null
-  }
-}
-// 에러 기록(베스트에포트): 실패해도 절대 throw 안 함(앱 흐름·무한루프 방지)
+// ── 오류 기록 (베스트에포트: 실패해도 throw 안 함) ──
 export async function logClientError(message) {
   if (!supabase) return
   try {
     await supabase.rpc('log_client_error', {
-      p_token: currentToken(),
+      p_name: currentName(),
       p_message: String(message ?? '').slice(0, 500),
       p_context: `${location.pathname} · ${navigator.userAgent}`.slice(0, 300),
     })
@@ -55,24 +56,18 @@ export async function logClientError(message) {
     /* 로깅 실패는 조용히 무시 */
   }
 }
-export async function getClientErrors(token, limit = 50) {
-  const { data, error } = await supabase.rpc('list_client_errors', { p_token: token, p_limit: limit })
-  if (error) throw error
-  return data
-}
 
-// ── 콘텐츠 쓰기 (직접, 로그인 사용자) ──
-// 체크/비고는 로그인 토큰으로 서버 RPC 호출 (체크한 사람은 서버가 토큰에서 결정)
-export async function setItemStatus(token, id, status) {
+// ── 체크 / 비고 (이름으로 기록) ──
+export async function setItemStatus(name, id, status) {
   const { error } = await supabase.rpc('check_item', {
-    p_token: token,
+    p_name: name,
     p_item_id: id,
     p_status: status,
   })
   if (error) throw error
 }
-export async function setItemNote(token, id, note) {
-  const { error } = await supabase.rpc('set_note', { p_token: token, p_item_id: id, p_note: note })
+export async function setItemNote(name, id, note) {
+  const { error } = await supabase.rpc('set_note', { p_name: name, p_item_id: id, p_note: note })
   if (error) throw error
 }
 export async function setMemo(boardId, memo) {
@@ -80,14 +75,13 @@ export async function setMemo(boardId, memo) {
   if (error) throw error
 }
 
-// ── 게시글 관리 (비밀번호 RPC) ──
-export async function createBoard(author, board, items, adminPw, entryPw) {
+// ── 게시글 (관리자 비밀번호로 확인) ──
+export async function createBoard(author, board, items, adminPw) {
   const { data, error } = await supabase.rpc('create_board', {
     p_author: author,
     p_board: board,
     p_items: items,
     p_admin_pw: adminPw,
-    p_entry_pw: entryPw,
   })
   if (error) throw error
   return data
@@ -114,172 +108,44 @@ export async function verifyBoardAdmin(boardId, pw) {
   if (error) throw error
   return data
 }
-export async function verifyBoardEntry(boardId, pw) {
-  const { data, error } = await supabase.rpc('verify_board_entry', { p_board_id: boardId, p_pw: pw })
-  if (error) throw error
-  return data
-}
-// 입장 비밀번호 추가/변경/삭제 (빈 문자열이면 삭제=전체 공개). 편집비번(adminPw)로 인증.
-export async function setEntryPassword(token, boardId, adminPw, newEntry) {
-  const { error } = await supabase.rpc('set_entry_password', {
-    p_token: token,
-    p_board_id: boardId,
-    p_admin_pw: adminPw,
-    p_new_entry: newEntry,
-  })
-  if (error) throw error
-}
 
-// ── 폴더 (공유 모델) ──
-// 보이는 폴더만: 공개(기본) + 내 개인 + 내가 참여한 공유. (서버 RPC가 걸러서 내려줌)
-// 토큰이 없으면(로그인 전) 호출하지 않음 — 인자 없이 호출하면 RPC를 못 찾는 오류가 남.
-export async function getFolders(token) {
-  if (!token) return []
-  const { data, error } = await supabase.rpc('list_visible_folders', { p_token: token })
-  if (error) throw error
-  return data
-}
-// 새 폴더는 무조건 개인(private). 소유자 = 본인.
-export async function createFolder(token, name, parentId) {
+// ── 폴더 (모두 공개) ──
+export async function createFolder(name, parentId) {
   const { data, error } = await supabase.rpc('create_folder', {
-    p_token: token,
     p_name: name,
     p_parent_id: parentId,
   })
   if (error) throw error
   return data
 }
-export async function deleteFolder(token, folderId) {
-  const { error } = await supabase.rpc('delete_folder', { p_token: token, p_folder_id: folderId })
+export async function deleteFolder(folderId) {
+  const { error } = await supabase.rpc('delete_folder', { p_folder_id: folderId })
   if (error) throw error
 }
-// 이동: 게시글은 폴더로(target 필수), 폴더는 다른 폴더/홈(target null=홈)으로
-export async function moveBoard(token, boardId, targetFolderId) {
+export async function moveBoard(boardId, targetFolderId) {
   const { error } = await supabase.rpc('move_board', {
-    p_token: token,
     p_board_id: boardId,
     p_target_folder_id: targetFolderId,
   })
   if (error) throw error
 }
-export async function moveFolder(token, folderId, targetParentId) {
+export async function moveFolder(folderId, targetParentId) {
   const { error } = await supabase.rpc('move_folder', {
-    p_token: token,
     p_folder_id: folderId,
     p_target_parent_id: targetParentId,
   })
   if (error) throw error
 }
-// 개인 폴더를 공유로 전환 / 공유 폴더 암호 변경 (최상위 폴더만)
-export async function shareFolder(token, folderId, password) {
-  const { error } = await supabase.rpc('share_folder', {
-    p_token: token,
-    p_folder_id: folderId,
-    p_password: password,
-  })
-  if (error) throw error
-}
-// 공유 해제 → 개인으로 (폴더 관리자만)
-export async function unshareFolder(token, folderId) {
-  const { error } = await supabase.rpc('unshare_folder', { p_token: token, p_folder_id: folderId })
-  if (error) throw error
-}
-// 암호(키워드)로 공유 폴더 '참여 요청'(즉시 가입 아님 — 관리자 수락 대기) → { ok } | { ok:false, error }
-export async function requestJoin(token, password) {
-  const { data, error } = await supabase.rpc('request_join', { p_token: token, p_password: password })
-  if (error) throw error
-  return data
-}
-// 참여 요청 목록 / 수락 / 거부 (폴더 관리자)
-export async function listJoinRequests(token, folderId) {
-  const { data, error } = await supabase.rpc('list_join_requests', {
-    p_token: token,
-    p_folder_id: folderId,
-  })
-  if (error) throw error
-  return data
-}
-export async function approveJoin(token, folderId, userId) {
-  const { error } = await supabase.rpc('approve_join', {
-    p_token: token,
-    p_folder_id: folderId,
-    p_user_id: userId,
-  })
-  if (error) throw error
-}
-export async function rejectJoin(token, folderId, userId) {
-  const { error } = await supabase.rpc('reject_join', {
-    p_token: token,
-    p_folder_id: folderId,
-    p_user_id: userId,
-  })
-  if (error) throw error
-}
-// 공유 폴더에서 나가기
-export async function leaveFolder(token, folderId) {
-  const { error } = await supabase.rpc('leave_folder', { p_token: token, p_folder_id: folderId })
-  if (error) throw error
-}
-// 참여자 목록 / 내보내기 / 관리자 넘기기
-export async function listFolderMembers(token, folderId) {
-  const { data, error } = await supabase.rpc('list_folder_members', {
-    p_token: token,
-    p_folder_id: folderId,
-  })
-  if (error) throw error
-  return data
-}
-export async function kickMember(token, folderId, userId) {
-  const { error } = await supabase.rpc('kick_member', {
-    p_token: token,
-    p_folder_id: folderId,
-    p_user_id: userId,
-  })
-  if (error) throw error
-}
-export async function transferFolderAdmin(token, folderId, userId) {
-  const { error } = await supabase.rpc('transfer_folder_admin', {
-    p_token: token,
-    p_folder_id: folderId,
-    p_user_id: userId,
-  })
-  if (error) throw error
-}
 
-// ── 공유 폴더 채팅 ──
-export async function listMessages(token, folderId, limit = 200) {
-  const { data, error } = await supabase.rpc('list_messages', {
-    p_token: token,
-    p_folder_id: folderId,
-    p_limit: limit,
-  })
+// ── 템플릿 (모두 함께 쓰는 공용 목록) ──
+export async function getTemplates() {
+  const { data, error } = await supabase.rpc('list_templates')
   if (error) throw error
   return data
 }
-export async function sendMessage(token, folderId, content, isNotice = false) {
-  const { error } = await supabase.rpc('send_message', {
-    p_token: token,
-    p_folder_id: folderId,
-    p_content: content,
-    p_is_notice: isNotice,
-  })
-  if (error) throw error
-}
-export async function deleteMessage(token, messageId) {
-  const { error } = await supabase.rpc('delete_message', { p_token: token, p_message_id: messageId })
-  if (error) throw error
-}
-
-// ── 템플릿 (#1) ──
-export async function getTemplates(token) {
-  // 본인 템플릿만 (개인용)
-  const { data, error } = await supabase.rpc('list_templates', { p_token: token })
-  if (error) throw error
-  return data
-}
-export async function saveTemplate(token, name, mode, categories, items, tableData) {
+export async function saveTemplate(owner, name, mode, categories, items, tableData) {
   const { data, error } = await supabase.rpc('save_template', {
-    p_token: token,
+    p_owner: owner,
     p_name: name,
     p_mode: mode,
     p_categories: categories,
@@ -289,52 +155,7 @@ export async function saveTemplate(token, name, mode, categories, items, tableDa
   if (error) throw error
   return data
 }
-export async function deleteTemplate(token, id) {
-  const { error } = await supabase.rpc('delete_template', { p_token: token, p_id: id })
+export async function deleteTemplate(id) {
+  const { error } = await supabase.rpc('delete_template', { p_id: id })
   if (error) throw error
-}
-
-// ── 사이트 관리자 (예약 계정으로 로그인한 경우) ──
-export async function siteDeleteBoard(token, boardId) {
-  const { error } = await supabase.rpc('site_delete_board', { p_token: token, p_board_id: boardId })
-  if (error) throw error
-}
-export async function listPendingUsers(token) {
-  const { data, error } = await supabase.rpc('list_pending_users', { p_token: token })
-  if (error) throw error
-  return data
-}
-export async function approveUser(token, userId) {
-  const { error } = await supabase.rpc('approve_user', { p_token: token, p_user_id: userId })
-  if (error) throw error
-}
-export async function rejectUser(token, userId) {
-  const { error } = await supabase.rpc('reject_user', { p_token: token, p_user_id: userId })
-  if (error) throw error
-}
-export async function listAllUsers(token) {
-  const { data, error } = await supabase.rpc('list_all_users', { p_token: token })
-  if (error) throw error
-  return data
-}
-export async function deleteUser(token, userId) {
-  const { error } = await supabase.rpc('delete_user', { p_token: token, p_user_id: userId })
-  if (error) throw error
-}
-export async function adminResetPassword(token, userId, newPw) {
-  const { error } = await supabase.rpc('admin_reset_password', {
-    p_token: token,
-    p_user_id: userId,
-    p_new_pw: newPw,
-  })
-  if (error) throw error
-}
-export async function changeMyPassword(token, oldPw, newPw) {
-  const { data, error } = await supabase.rpc('change_my_password', {
-    p_token: token,
-    p_old_pw: oldPw,
-    p_new_pw: newPw,
-  })
-  if (error) throw error
-  return data
 }

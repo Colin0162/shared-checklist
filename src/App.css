@@ -533,6 +533,36 @@
   align-items: center;
   margin-top: 2px;
 }
+/* 이름 입력 화면 (로그인 대신) */
+.name-prompt {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px 20px;
+  max-width: 420px;
+  margin: 24px auto;
+  text-align: center;
+}
+.name-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 800;
+}
+.name-desc {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--muted);
+  word-break: keep-all;
+}
+.name-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
 /* AI로 항목 만들기 */
 .ai-box {
   background: var(--accent-weak);

@@ -1,9 +1,9 @@
 import Clock from './Clock'
-import { displayName } from '../lib/constants'
 
-// 상단 헤더: 본당 배너 + 제목. 로그인한 경우만 유저바(이름/가이드/비번변경/로그아웃)+시계.
-// props: user?, onShowGuide, onShowChangePw, onLogout
-function AppHeader({ user, onShowGuide, onShowChangePw, onLogout }) {
+// 상단 헤더: 본당 배너 + 제목. 이름이 있으면 유저바(이름/가이드/이름변경)+시계.
+//   로그인이 없으므로 로그아웃도 없다. 이름은 기기에만 저장.
+// props: name?, onShowGuide, onChangeName
+function AppHeader({ name, onShowGuide, onChangeName }) {
   return (
     <header className="app-header">
       <img
@@ -15,15 +15,12 @@ function AppHeader({ user, onShowGuide, onShowChangePw, onLogout }) {
         }}
       />
       <h1>청년회 체크리스트</h1>
-      {user && (
+      {name && (
         <>
           <div className="user-bar">
-            <span className="user-name">
-              {displayName(user.name)}님{user.is_site_admin ? ' (사이트 관리자)' : ''}
-            </span>
+            <span className="user-name">{name}님</span>
             <button className="btn btn-small" onClick={onShowGuide}>사용 가이드</button>
-            <button className="btn btn-small" onClick={onShowChangePw}>비밀번호 변경</button>
-            <button className="btn btn-small" onClick={onLogout}>로그아웃</button>
+            <button className="btn btn-small" onClick={onChangeName}>이름 바꾸기</button>
           </div>
           <Clock />
         </>
